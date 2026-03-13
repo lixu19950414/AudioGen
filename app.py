@@ -662,9 +662,9 @@ def tab_tools():
 
 
 def build_app() -> gr.Blocks:
-    with gr.Blocks(title="DPAudio — 游戏语音合成工具") as demo:
+    with gr.Blocks(title="AudioGen — 游戏语音合成工具") as demo:
         gr.Markdown(
-            "# DPAudio — 游戏语音合成工具\n"
+            "# AudioGen — 游戏语音合成工具\n"
             "基于 **Qwen3-TTS** 本地模型 · 预设音色 / 参考克隆 / 角色管理 / 批量处理"
         )
         tab_single_synth()
