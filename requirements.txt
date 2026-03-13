@@ -6,3 +6,4 @@ pydub
 pandas
 openpyxl
 numpy
+qwen-tts
