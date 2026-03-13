@@ -29,7 +29,7 @@ def tab_single_synth():
                 return None, "文本不能为空"
             voice_name = voice if voice and voice != "（默认）" else None
             hint = voice if voice and voice != "（默认）" else ""
-            return synth_to_file(text, fmt, voice_name, name_hint=hint)
+            return synth_to_file(text, fmt, voice_name, name_hint=hint, char_name=hint)
 
         synth_btn.click(
             fn=on_synth,

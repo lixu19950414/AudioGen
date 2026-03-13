@@ -91,7 +91,8 @@ def tab_clone():
             if not text.strip():
                 return None, "待合成文本不能为空"
             hint = char_sel if char_sel and char_sel != "（不使用角色）" else "clone"
-            return synth_to_file(text, fmt, ref_audio=ref_audio, ref_text=ref_t.strip() or None, name_hint=hint)
+            char = char_sel if char_sel and char_sel != "（不使用角色）" else ""
+            return synth_to_file(text, fmt, ref_audio=ref_audio, ref_text=ref_t.strip() or None, name_hint=hint, char_name=char)
 
         def on_save_to_char(ref_audio, ref_t, char_name, char_desc):
             char_name = char_name.strip()

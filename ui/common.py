@@ -110,6 +110,7 @@ def synth_to_file(
     ref_audio=None,
     ref_text: Optional[str] = None,
     name_hint: str = "",
+    char_name: str = "",
 ) -> tuple[Optional[str], str]:
     """通用合成 → (audio_path | None, status)"""
     try:
@@ -122,7 +123,13 @@ def synth_to_file(
         audio = normalize_audio(audio)
         out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
         path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint)
-        log_event(EVENT_SYNTHESIZE, f"文本={text[:50]} 音色={voice_name or 'clone'} 格式={fmt} 时长={len(audio)/sr:.1f}s")
+        duration = len(audio) / sr
+        rel_path = Path(path).relative_to(BASE_DIR).as_posix()
+        char_info = f" 角色={char_name}" if char_name else ""
+        if ref_audio is not None:
+            log_event(EVENT_SYNTHESIZE, f"类型=克隆合成{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}")
+        else:
+            log_event(EVENT_SYNTHESIZE, f"类型=预设合成{char_info} 文本={text[:50]} 音色={voice_name or '默认'} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}")
         return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
     except Exception as e:
         logger.exception("合成失败")

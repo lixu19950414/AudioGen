@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import gradio as gr
 
 from core.audio_utils import AudioFormat, audio_to_bytes
 from core.audio_utils import normalize_audio
 from ui.common import (
+    BASE_DIR,
     engine,
     load_design_characters,
     save_design_characters,
@@ -74,7 +77,8 @@ def tab_voice_design():
                 audio = normalize_audio(audio)
                 out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
                 path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint="design")
-                log_event(EVENT_SYNTHESIZE, f"音色设计 文本={text[:50]} 描述={instruct[:30]} 格式={fmt} 时长={len(audio)/sr:.1f}s")
+                rel_path = Path(path).relative_to(BASE_DIR).as_posix()
+                log_event(EVENT_SYNTHESIZE, f"类型=音色设计 文本={text[:50]} 音色描述={instruct[:50]} 格式={fmt} 时长={len(audio)/sr:.1f}s 文件={rel_path}")
                 return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
             except Exception as e:
                 return None, f"合成失败：{e}"
