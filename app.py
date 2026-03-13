@@ -168,57 +168,7 @@ def tab_single_synth():
 
 
 # ===========================================================================
-# Tab 2 — 音色设计
-# ===========================================================================
-
-def tab_voice_design():
-    with gr.Tab("音色设计"):
-        gr.Markdown(
-            "### 用自然语言描述说话人特征，生成对应音色语音\n"
-            "例：`男性，低沉浑厚，中年，江湖老侠` 或 `女性，清脆明亮，少女，活泼`"
-        )
-        with gr.Row():
-            with gr.Column(scale=2):
-                instruct_in = gr.Textbox(
-                    label="音色描述",
-                    placeholder="例：男性，低沉浑厚，中年老练的法师",
-                    lines=3,
-                )
-                text_in = gr.Textbox(
-                    label="合成文本",
-                    placeholder="请输入要朗读的文字…",
-                    lines=4,
-                )
-                fmt_radio = gr.Radio(choices=["WAV", "MP3"], value="WAV", label="输出格式")
-                design_btn = gr.Button("设计并合成", variant="primary")
-            with gr.Column(scale=2):
-                audio_out = gr.Audio(label="合成结果", type="filepath")
-                status_out = gr.Textbox(label="状态", interactive=False)
-
-        def on_design(instruct, text, fmt):
-            if not text.strip():
-                return None, "文本不能为空"
-            if not instruct.strip():
-                return None, "音色描述不能为空"
-            try:
-                audio, sr = engine.synthesize_design(text=text, instruct=instruct)
-                audio = normalize_audio(audio)
-                out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
-                path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt)
-                return path, f"合成成功（{len(audio)/sr:.1f} 秒）"
-            except Exception as e:
-                logger.exception("音色设计合成失败")
-                return None, f"合成失败：{e}"
-
-        design_btn.click(
-            fn=on_design,
-            inputs=[instruct_in, text_in, fmt_radio],
-            outputs=[audio_out, status_out],
-        )
-
-
-# ===========================================================================
-# Tab 3 — 参考音频克隆
+# Tab 2 — 参考音频克隆
 # ===========================================================================
 
 def tab_clone():
@@ -477,10 +427,9 @@ def build_app() -> gr.Blocks:
     with gr.Blocks(title="DPAudio — 游戏语音合成工具") as demo:
         gr.Markdown(
             "# DPAudio — 游戏语音合成工具\n"
-            "基于 **Qwen3-TTS** 本地模型 · 预设音色 / 音色设计 / 参考克隆 / 角色管理 / 批量处理"
+            "基于 **Qwen3-TTS** 本地模型 · 预设音色 / 参考克隆 / 角色管理 / 批量处理"
         )
         tab_single_synth()
-        tab_voice_design()
         tab_clone()
         tab_character_manager()
         tab_batch()

@@ -106,30 +106,6 @@ class TTSEngine:
             return self._clone(text, ref_audio, ref_text)
         return self._preset(text, voice_name)
 
-    def synthesize_design(
-        self,
-        text: str,
-        instruct: str,
-    ) -> tuple[np.ndarray, int]:
-        """音色设计合成：用自然语言描述说话人特征生成音频。
-
-        Args:
-            text: 待合成文本
-            instruct: 音色描述，例如 "男性，沉稳低沉，中年游侠"
-        """
-        if not text.strip():
-            raise ValueError("合成文本不能为空")
-        if not instruct.strip():
-            raise ValueError("音色描述不能为空")
-
-        model = self._get_model()
-        audio_list, sr = model.generate_voice_design(
-            text=text,
-            instruct=instruct,
-            language="Auto",
-            non_streaming_mode=True,
-        )
-        return np.array(audio_list[0], dtype=np.float32), int(sr)
 
     # ------------------------------------------------------------------
     # 内部实现
