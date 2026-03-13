@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import logging
 import subprocess
 import tempfile
@@ -10,6 +11,7 @@ from typing import Optional
 import gradio as gr
 
 from ui.common import FFMPEG_BIN
+from core.app_logger import read_logs, ALL_EVENT_TYPES
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +117,41 @@ def tab_tools():
                     fn=on_extract_audio,
                     inputs=[tool_video_in, tool_start_in, tool_end_in, tool_fmt],
                     outputs=[tool_audio_out, tool_status_out],
+                )
+
+            # ---------------------------------------------------------------
+            # 工具 2 — 日志查看
+            # ---------------------------------------------------------------
+            with gr.Tab("日志查看"):
+                gr.Markdown("### 查看系统操作日志")
+                with gr.Row():
+                    log_date = gr.Textbox(
+                        label="日期（YYYY-MM-DD）",
+                        value=datetime.date.today().isoformat(),
+                        placeholder="如 2026-03-14",
+                    )
+                    log_type = gr.Dropdown(
+                        choices=["全部"] + ALL_EVENT_TYPES,
+                        value="全部",
+                        label="事件类型",
+                    )
+                    log_refresh_btn = gr.Button("查询", variant="primary")
+
+                log_output = gr.Textbox(
+                    label="日志内容",
+                    interactive=False,
+                    lines=20,
+                    max_lines=30,
+                )
+
+                def on_query_logs(date_str, event_type):
+                    et = event_type if event_type != "全部" else None
+                    return read_logs(date=date_str.strip() or None, event_type=et)
+
+                log_refresh_btn.click(
+                    fn=on_query_logs,
+                    inputs=[log_date, log_type],
+                    outputs=[log_output],
                 )
 
     return tool_audio_out, tool_send_to_clone_btn

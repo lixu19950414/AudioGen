@@ -12,6 +12,7 @@ from ui.common import (
     save_design_characters,
     to_gradio_audio,
 )
+from core.app_logger import log_event, EVENT_SYNTHESIZE, EVENT_CHAR_ADD
 
 
 def tab_voice_design():
@@ -73,6 +74,7 @@ def tab_voice_design():
                 audio = normalize_audio(audio)
                 out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
                 path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint="design")
+                log_event(EVENT_SYNTHESIZE, f"音色设计 文本={text[:50]} 描述={instruct[:30]} 格式={fmt} 时长={len(audio)/sr:.1f}s")
                 return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
             except Exception as e:
                 return None, f"合成失败：{e}"
@@ -96,6 +98,7 @@ def tab_voice_design():
                 "instruct": instruct.strip(),
             }
             save_design_characters(chars)
+            log_event(EVENT_CHAR_ADD, f"设计角色={char_name} 描述={instruct.strip()[:30]}")
             new_choices = ["（不使用角色）"] + list(chars.keys())
             return (
                 f"已保存设计角色 [{char_name}]",

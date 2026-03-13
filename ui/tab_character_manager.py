@@ -12,6 +12,7 @@ from ui.common import (
     save_characters,
     save_design_characters,
 )
+from core.app_logger import log_event, EVENT_CHAR_REMOVE
 
 
 def tab_character_manager():
@@ -55,6 +56,7 @@ def tab_character_manager():
             if name in chars:
                 del chars[name]
                 save_characters(chars)
+                log_event(EVENT_CHAR_REMOVE, f"克隆角色={name}")
                 return character_display_rows(chars), f"已删除克隆角色：{name}"
             return character_display_rows(chars), f"角色不存在：{name}"
 
@@ -66,6 +68,7 @@ def tab_character_manager():
             if name in chars:
                 del chars[name]
                 save_design_characters(chars)
+                log_event(EVENT_CHAR_REMOVE, f"设计角色={name}")
                 return design_character_display_rows(chars), f"已删除设计角色：{name}"
             return design_character_display_rows(chars), f"角色不存在：{name}"
 

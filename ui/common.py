@@ -13,6 +13,7 @@ import numpy as np
 from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
 from core.batch_processor import BatchProcessor
 from core.tts_engine import TTSEngine
+from core.app_logger import log_event, EVENT_SYNTHESIZE
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,7 @@ def synth_to_file(
         audio = normalize_audio(audio)
         out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
         path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint)
+        log_event(EVENT_SYNTHESIZE, f"文本={text[:50]} 音色={voice_name or 'clone'} 格式={fmt} 时长={len(audio)/sr:.1f}s")
         return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
     except Exception as e:
         logger.exception("合成失败")

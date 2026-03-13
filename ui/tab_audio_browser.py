@@ -11,6 +11,7 @@ from typing import Optional
 import gradio as gr
 
 from ui.common import OUTPUT_DIR
+from core.app_logger import log_event, EVENT_DOWNLOAD
 
 
 def _scan_audio_files(keyword: str = "", fmt_filter: str = "全部") -> list[list]:
@@ -108,6 +109,8 @@ def tab_audio_browser():
         def on_batch_download(table_data):
             zip_path = _batch_download(table_data)
             if zip_path:
+                count = len(table_data) if table_data is not None else 0
+                log_event(EVENT_DOWNLOAD, f"批量下载 文件数={count}")
                 return gr.update(value=zip_path, visible=True)
             return gr.update(value=None, visible=False)
 

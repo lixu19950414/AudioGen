@@ -32,6 +32,7 @@ from ui.tab_character_manager import tab_character_manager
 from ui.tab_batch import tab_batch
 from ui.tab_tools import tab_tools
 from ui.tab_audio_browser import tab_audio_browser
+from core.app_logger import log_event, EVENT_LOGIN
 
 logging.basicConfig(
     level=logging.INFO,
@@ -77,6 +78,13 @@ def build_app() -> gr.Blocks:
         design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])
         browser_send_btn.click(fn=lambda a: a, inputs=[browser_audio_out], outputs=[ref_audio_in])
+
+        # 页面加载时记录登录日志
+        def on_page_load(request: gr.Request):
+            username = request.username or "unknown"
+            log_event(EVENT_LOGIN, f"用户={username}")
+
+        demo.load(fn=on_page_load)
 
     return demo
 

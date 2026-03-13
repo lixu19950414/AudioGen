@@ -14,6 +14,7 @@ from ui.common import (
     save_characters,
     synth_to_file,
 )
+from core.app_logger import log_event, EVENT_CHAR_ADD
 
 
 def tab_clone():
@@ -109,6 +110,7 @@ def tab_clone():
                 "ref_text": ref_t.strip() if ref_t else "",
             }
             save_characters(chars)
+            log_event(EVENT_CHAR_ADD, f"克隆角色={char_name} 参考音频={dest.name}")
             new_choices = ["（不使用角色）"] + list(chars.keys())
             return (
                 f"已保存角色 [{char_name}]，参考音频：{dest.name}",
