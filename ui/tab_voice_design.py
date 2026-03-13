@@ -79,7 +79,7 @@ def tab_voice_design():
                 path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint="design")
                 rel_path = Path(path).relative_to(BASE_DIR).as_posix()
                 log_event(EVENT_SYNTHESIZE, f"类型=音色设计 文本={text[:50]} 音色描述={instruct[:50]} 格式={fmt} 时长={len(audio)/sr:.1f}s 文件={rel_path}")
-                return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
+                return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{rel_path}"
             except Exception as e:
                 return None, f"合成失败：{e}"
 

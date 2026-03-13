@@ -130,7 +130,7 @@ def synth_to_file(
             log_event(EVENT_SYNTHESIZE, f"类型=克隆合成{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}")
         else:
             log_event(EVENT_SYNTHESIZE, f"类型=预设合成{char_info} 文本={text[:50]} 音色={voice_name or '默认'} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}")
-        return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
+        return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{rel_path}"
     except Exception as e:
         logger.exception("合成失败")
         return None, f"合成失败：{e}"

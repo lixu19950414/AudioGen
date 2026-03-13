@@ -9,14 +9,12 @@ from ui.common import synth_to_file
 
 
 def tab_single_synth():
-    voice_choices = ["（默认）"] + PRESET_VOICES
-
     with gr.Tab("预设音色合成"):
         gr.Markdown("### 预设音色文本合成")
         with gr.Row():
             with gr.Column(scale=2):
                 text_in = gr.Textbox(label="合成文本", placeholder="请输入要合成的文字…", lines=5)
-                voice_dd = gr.Dropdown(choices=voice_choices, value="（默认）", label="音色选择")
+                voice_dd = gr.Dropdown(choices=PRESET_VOICES, value=PRESET_VOICES[0] if PRESET_VOICES else None, label="音色选择")
                 fmt_radio = gr.Radio(choices=["WAV", "MP3"], value="WAV", label="输出格式")
                 synth_btn = gr.Button("生成语音", variant="primary")
             with gr.Column(scale=2):
@@ -27,8 +25,8 @@ def tab_single_synth():
         def on_synth(text, voice, fmt):
             if not text.strip():
                 return None, "文本不能为空"
-            voice_name = voice if voice and voice != "（默认）" else None
-            hint = voice if voice and voice != "（默认）" else ""
+            voice_name = voice or None
+            hint = voice or ""
             return synth_to_file(text, fmt, voice_name, name_hint=hint, char_name=hint)
 
         synth_btn.click(
