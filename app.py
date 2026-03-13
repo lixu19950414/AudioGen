@@ -13,6 +13,7 @@ Gradio 前端，共 7 个 Tab：
 from __future__ import annotations
 
 import config  # noqa: F401  确保 HF 环境变量尽早生效
+from config import AUTH_USERS
 
 import logging
 
@@ -88,5 +89,5 @@ if __name__ == "__main__":
         share=False,
         inbrowser=True,
         show_error=True,
-        auth=("admin", "123456"),
+        auth=AUTH_USERS,
     )

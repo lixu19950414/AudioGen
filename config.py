@@ -12,3 +12,8 @@ os.environ.setdefault("HF_ENDPOINT", "http://hf-mirror.com")
 
 # 禁用 hf_xet 下载协议，避免兼容性问题
 os.environ["HF_HUB_DISABLE_XET"] = "1"
+
+# Gradio 登录账号列表 [(用户名, 密码), ...]
+AUTH_USERS = [
+    ("admin", "123456"),
+]
