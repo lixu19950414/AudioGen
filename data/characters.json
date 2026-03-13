@@ -1,1 +1,8 @@
-{}
+{
+  "小医仙-正常": {
+    "description": "",
+    "voice_type": "clone",
+    "ref_audio_path": "data/reference_audio/小医仙-正常.wav",
+    "ref_text": "你吃饭了吗？没吃的话，我给你做饭好不好。"
+  }
+}

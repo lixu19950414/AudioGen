@@ -10,6 +10,8 @@ Gradio 前端，共 5 个 Tab：
 
 from __future__ import annotations
 
+import config  # noqa: F401  确保 HF 环境变量尽早生效
+
 import json
 import logging
 import shutil
@@ -163,8 +165,9 @@ def tab_single_synth():
                 fmt_radio = gr.Radio(choices=["WAV", "MP3"], value="WAV", label="输出格式")
                 synth_btn = gr.Button("生成语音", variant="primary")
             with gr.Column(scale=2):
-                audio_out = gr.Audio(label="合成结果", type="filepath")
+                audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 status_out = gr.Textbox(label="状态", interactive=False)
+                send_to_clone_btn = gr.Button("发送到参考音频克隆")
 
         def on_synth(text, voice, fmt):
             if not text.strip():
@@ -179,6 +182,7 @@ def tab_single_synth():
             outputs=[audio_out, status_out],
         )
 
+    return audio_out, send_to_clone_btn
 
 # ===========================================================================
 # Tab 2 — 音色设计
@@ -211,8 +215,9 @@ def tab_voice_design():
                 design_fmt = gr.Radio(choices=["WAV", "MP3"], value="WAV", label="输出格式")
                 design_btn = gr.Button("生成语音", variant="primary")
             with gr.Column(scale=2):
-                design_audio_out = gr.Audio(label="合成结果", type="filepath")
+                design_audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 design_status = gr.Textbox(label="状态", interactive=False)
+                design_send_to_clone_btn = gr.Button("发送到参考音频克隆")
 
                 gr.Markdown("---\n**保存为设计角色**")
                 design_save_name = gr.Textbox(label="角色名", placeholder="例：温柔少女")
@@ -278,7 +283,7 @@ def tab_voice_design():
             outputs=[design_save_status, design_char_dd],
         )
 
-    return design_char_dd, design_save_btn
+    return design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn
 
 
 # ===========================================================================
@@ -325,7 +330,7 @@ def tab_clone():
                 clone_btn = gr.Button("克隆合成", variant="primary")
 
             with gr.Column():
-                clone_audio_out = gr.Audio(label="克隆合成结果", type="filepath")
+                clone_audio_out = gr.Audio(label="克隆合成结果", type="filepath", interactive=False)
                 clone_status = gr.Textbox(label="状态", interactive=False)
 
                 gr.Markdown("---\n**保存为角色音色**")
@@ -342,8 +347,10 @@ def tab_clone():
             cfg = chars.get(char_name, {})
             ref_path = cfg.get("ref_audio_path", "")
             ref_text = cfg.get("ref_text", "")
-            if ref_path and Path(ref_path).exists():
-                return gr.update(value=ref_path), gr.update(value=ref_text)
+            if ref_path:
+                abs_path = (BASE_DIR / ref_path) if not Path(ref_path).is_absolute() else Path(ref_path)
+                if abs_path.exists():
+                    return gr.update(value=str(abs_path)), gr.update(value=ref_text)
             return gr.update(), gr.update(value=ref_text)
 
         clone_char_dd.change(
@@ -373,7 +380,7 @@ def tab_clone():
             chars[char_name] = {
                 "description": char_desc.strip(),
                 "voice_type": "clone",
-                "ref_audio_path": str(dest),
+                "ref_audio_path": str(dest.relative_to(BASE_DIR)),
                 "ref_text": ref_t.strip() if ref_t else "",
             }
             save_characters(chars)
@@ -394,7 +401,7 @@ def tab_clone():
             outputs=[save_char_status, clone_char_dd],
         )
 
-    return clone_char_dd, save_to_char_btn
+    return clone_char_dd, save_to_char_btn, ref_audio_in
 
 
 # ===========================================================================
@@ -595,8 +602,9 @@ def tab_tools():
                         tool_extract_btn = gr.Button("开始提取", variant="primary")
 
                     with gr.Column():
-                        tool_audio_out = gr.Audio(label="提取结果", type="filepath")
+                        tool_audio_out = gr.Audio(label="提取结果", type="filepath", interactive=False)
                         tool_status_out = gr.Textbox(label="状态", interactive=False)
+                        tool_send_to_clone_btn = gr.Button("发送到参考音频克隆")
 
                 def on_extract_audio(video, start_t, end_t, fmt):
                     if video is None:
@@ -658,6 +666,7 @@ def tab_tools():
                     outputs=[tool_audio_out, tool_status_out],
                 )
 
+    return tool_audio_out, tool_send_to_clone_btn
 
 
 
@@ -667,11 +676,11 @@ def build_app() -> gr.Blocks:
             "# AudioGen — 游戏语音合成工具\n"
             "基于 **Qwen3-TTS** 本地模型 · 预设音色 / 参考克隆 / 角色管理 / 批量处理"
         )
-        tab_single_synth()
-        design_char_dd, design_save_btn = tab_voice_design()
-        clone_char_dd, clone_save_btn = tab_clone()
+        synth_audio_out, synth_send_btn = tab_single_synth()
+        design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
+        clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
         char_table, design_table, delete_clone_btn, delete_design_btn = tab_character_manager()
-        tab_tools()
+        tool_audio_out, tool_send_btn = tab_tools()
 
         # 跨 Tab 自动刷新：保存角色 → 刷新管理表格
         clone_save_btn.click(
@@ -691,6 +700,11 @@ def build_app() -> gr.Blocks:
             fn=lambda: gr.update(choices=["（不使用角色）"] + list(load_design_characters().keys())),
             outputs=[design_char_dd],
         )
+
+        # 发送到参考音频克隆
+        synth_send_btn.click(fn=lambda a: a, inputs=[synth_audio_out], outputs=[ref_audio_in])
+        design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
+        tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])
 
     return demo
 

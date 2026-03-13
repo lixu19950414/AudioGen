@@ -12,17 +12,13 @@ Qwen3-TTS 模型封装（CustomVoice 模型，支持三种合成模式）：
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 from typing import Optional, Union
 
 import numpy as np
 import torch
 
-# 强制使用 HTTP 镜像下载模型权重（优先读取环境变量，未设置则使用 hf-mirror.com）
-os.environ.setdefault("HF_ENDPOINT", "http://hf-mirror.com")
-# 禁用 hf_xet 下载协议，避免兼容性问题
-os.environ["HF_HUB_DISABLE_XET"] = "1"
+import config  # noqa: F401  确保 HF 环境变量尽早生效
 
 logger = logging.getLogger(__name__)
 

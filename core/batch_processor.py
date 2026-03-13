@@ -109,9 +109,11 @@ class BatchProcessor:
                     voice_name = cfg.get("voice_name")
                 elif cfg.get("voice_type") == "clone":
                     rp = cfg.get("ref_audio_path", "")
-                    if rp and Path(rp).exists():
-                        ref_audio = rp
-                        ref_text = cfg.get("ref_text")
+                    if rp:
+                        abs_rp = (Path(__file__).resolve().parent.parent / rp) if not Path(rp).is_absolute() else Path(rp)
+                        if abs_rp.exists():
+                            ref_audio = str(abs_rp)
+                            ref_text = cfg.get("ref_text")
 
             try:
                 if progress_cb:
