@@ -222,7 +222,7 @@ def tab_voice_design():
                 gr.Markdown("---\n**保存为设计角色**")
                 design_save_name = gr.Textbox(label="角色名", placeholder="例：温柔少女")
                 design_save_desc = gr.Textbox(label="描述（可选）")
-                design_save_btn = gr.Button("保存到设计角色库", variant="secondary")
+                design_save_btn = gr.Button("保存角色", variant="secondary")
                 design_save_status = gr.Textbox(label="保存状态", interactive=False)
 
         def on_char_select(char_name):
@@ -336,7 +336,7 @@ def tab_clone():
                 gr.Markdown("---\n**保存为角色音色**")
                 save_char_name = gr.Textbox(label="角色名", placeholder="例：反派Boss")
                 save_char_desc = gr.Textbox(label="描述（可选）")
-                save_to_char_btn = gr.Button("保存到角色管理", variant="secondary")
+                save_to_char_btn = gr.Button("保存角色", variant="secondary")
                 save_char_status = gr.Textbox(label="保存状态", interactive=False)
 
         def on_char_select(char_name):
@@ -716,4 +716,5 @@ if __name__ == "__main__":
         server_port=7860,
         share=False,
         inbrowser=True,
+        debug=True
     )
