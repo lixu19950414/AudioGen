@@ -1,0 +1,8 @@
+qwen-tts
+gradio>=4.0
+torch
+soundfile
+pydub
+pandas
+openpyxl
+numpy
