@@ -1,6 +1,0 @@
-models/
-output/
-data/reference_audio/
-__pycache__/
-*.pyc
-.env
