@@ -1,11 +1,13 @@
 """
 app.py — DPAudio 游戏语音合成工具
-Gradio 前端，共 5 个 Tab：
+Gradio 前端，共 7 个 Tab：
   1. 预设音色合成
   2. 自定义音色设计（自然语言描述音色）
   3. 模仿音频设计
   4. 角色管理
   5. 批量处理
+  6. 工具
+  7. 音频浏览
 """
 
 from __future__ import annotations
@@ -669,18 +671,76 @@ def tab_tools():
     return tool_audio_out, tool_send_to_clone_btn
 
 
+# ===========================================================================
+# Tab 7 — 音频浏览
+# ===========================================================================
+
+def _scan_audio_files() -> list[list]:
+    """扫描 OUTPUT_DIR 下的 .wav/.mp3 文件，按修改时间倒序返回表格行。"""
+    files = [
+        f for f in OUTPUT_DIR.iterdir()
+        if f.is_file() and f.suffix.lower() in (".wav", ".mp3")
+    ]
+    files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+    rows = []
+    for f in files:
+        stat = f.stat()
+        size_kb = stat.st_size / 1024
+        if size_kb >= 1024:
+            size_str = f"{size_kb / 1024:.1f} MB"
+        else:
+            size_str = f"{size_kb:.1f} KB"
+        mtime_str = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        rows.append([f.name, size_str, mtime_str])
+    return rows
+
+
+def tab_audio_browser():
+    with gr.Tab("音频浏览"):
+        gr.Markdown("### 浏览已生成的音频文件")
+        refresh_btn = gr.Button("刷新列表")
+        browser_table = gr.Dataframe(
+            headers=["文件名", "大小", "修改时间"],
+            datatype=["str", "str", "str"],
+            label="音频文件列表",
+            interactive=False,
+            value=_scan_audio_files(),
+        )
+        browser_audio_out = gr.Audio(label="播放音频", type="filepath", interactive=False)
+        browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+
+        refresh_btn.click(fn=_scan_audio_files, outputs=[browser_table])
+
+        def on_select(evt: gr.SelectData, table_data):
+            row_idx = evt.index[0]
+            if row_idx < 0 or row_idx >= len(table_data):
+                return None
+            filename = table_data.iloc[row_idx, 0]
+            filepath = OUTPUT_DIR / filename
+            if filepath.exists():
+                return str(filepath)
+            return None
+
+        browser_table.select(
+            fn=on_select,
+            inputs=[browser_table],
+            outputs=[browser_audio_out],
+        )
+
+    return browser_audio_out, browser_send_to_clone_btn
+
 
 def build_app() -> gr.Blocks:
     with gr.Blocks(title="AudioGen — 游戏语音合成工具") as demo:
         gr.Markdown(
             "# AudioGen — 游戏语音合成工具\n"
-            "基于 **Qwen3-TTS** 本地模型 · 预设音色 / 参考克隆 / 角色管理 / 批量处理"
         )
         synth_audio_out, synth_send_btn = tab_single_synth()
         design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
         clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
         char_table, design_table, delete_clone_btn, delete_design_btn = tab_character_manager()
         tool_audio_out, tool_send_btn = tab_tools()
+        browser_audio_out, browser_send_btn = tab_audio_browser()
 
         # 跨 Tab 自动刷新：保存角色 → 刷新管理表格
         clone_save_btn.click(
@@ -705,6 +765,7 @@ def build_app() -> gr.Blocks:
         synth_send_btn.click(fn=lambda a: a, inputs=[synth_audio_out], outputs=[ref_audio_in])
         design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])
+        browser_send_btn.click(fn=lambda a: a, inputs=[browser_audio_out], outputs=[ref_audio_in])
 
     return demo
 
@@ -716,5 +777,6 @@ if __name__ == "__main__":
         server_port=7860,
         share=False,
         inbrowser=True,
-        debug=True
+        show_error=True,
+        auth=("admin", "123456"),
     )
