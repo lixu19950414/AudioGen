@@ -41,6 +41,8 @@ PRESET_VOICES: list[str] = [
 CUSTOM_VOICE_MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
 # Base 模型：参考音频克隆（generate_voice_clone 只支持 base 模型）
 BASE_MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-Base"
+# VoiceDesign 模型：自然语言描述生成音色
+VOICE_DESIGN_MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign"
 
 
 class TTSEngine:
@@ -50,6 +52,7 @@ class TTSEngine:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self._model = None           # CustomVoice 模型
         self._base_model = None      # Base 模型（用于克隆）
+        self._voice_design_model = None  # VoiceDesign 模型
         self._dynamic_speakers: Optional[list[str]] = None
         logger.info("TTSEngine 初始化，device=%s", self.device)
 
@@ -99,6 +102,23 @@ class TTSEngine:
             logger.info("Base 模型加载完成")
         return self._base_model
 
+    def _get_voice_design_model(self):
+        """加载 VoiceDesign 模型（自然语言描述音色）。"""
+        if self._voice_design_model is None:
+            try:
+                from qwen_tts import Qwen3TTSModel  # type: ignore
+            except ImportError as e:
+                raise RuntimeError("请安装 qwen-tts：pip install -U qwen-tts") from e
+
+            logger.info("正在加载 VoiceDesign 模型：%s", VOICE_DESIGN_MODEL_ID)
+            self._voice_design_model = Qwen3TTSModel.from_pretrained(
+                VOICE_DESIGN_MODEL_ID,
+                device_map=self.device,
+                dtype=torch.bfloat16,
+            )
+            logger.info("VoiceDesign 模型加载完成")
+        return self._voice_design_model
+
     def get_preset_voices(self) -> list[str]:
         """返回预设说话人列表（模型加载后尝试动态获取，否则用静态列表）。"""
         if self._dynamic_speakers is not None:
@@ -126,6 +146,18 @@ class TTSEngine:
         if ref_audio is not None:
             return self._clone(text, ref_audio, ref_text)
         return self._preset(text, voice_name)
+
+    def voice_design(
+        self,
+        text: str,
+        instruct: str,
+    ) -> tuple[np.ndarray, int]:
+        """音色设计合成：通过自然语言描述生成音色。"""
+        if not text or not text.strip():
+            raise ValueError("合成文本不能为空")
+        if not instruct or not instruct.strip():
+            raise ValueError("音色描述不能为空")
+        return self._voice_design(text, instruct)
 
 
     # ------------------------------------------------------------------
@@ -164,6 +196,16 @@ class TTSEngine:
         audio_list, sr = model.generate_voice_clone(**clone_kwargs)
         return np.array(audio_list[0], dtype=np.float32), int(sr)
 
+    def _voice_design(self, text: str, instruct: str) -> tuple[np.ndarray, int]:
+        model = self._get_voice_design_model()
+        audio_list, sr = model.generate_voice_design(
+            text=text,
+            instruct=instruct,
+            language="Auto",
+            non_streaming_mode=True,
+        )
+        return np.array(audio_list[0], dtype=np.float32), int(sr)
+
     # ------------------------------------------------------------------
     # 资源管理
     # ------------------------------------------------------------------
@@ -172,6 +214,7 @@ class TTSEngine:
         """释放显存。"""
         self._model = None
         self._base_model = None
+        self._voice_design_model = None
         self._dynamic_speakers = None
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
