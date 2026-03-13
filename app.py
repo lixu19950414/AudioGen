@@ -1,10 +1,10 @@
 """
 app.py — DPAudio 游戏语音合成工具
 Gradio 前端，共 5 个 Tab：
-  1. 单条合成
-  2. 音色设计（自然语言描述音色）
-  3. 参考音频克隆
-  4. 角色音色管理
+  1. 预设音色合成
+  2. 自定义音色设计（自然语言描述音色）
+  3. 模仿音频设计
+  4. 角色管理
   5. 批量处理
 """
 
@@ -150,13 +150,13 @@ def synth_to_file(
 
 
 # ===========================================================================
-# Tab 1 — 单条合成
+# Tab 1 — 预设音色合成
 # ===========================================================================
 
 def tab_single_synth():
     voice_choices = ["（默认）"] + PRESET_VOICES
 
-    with gr.Tab("单条合成"):
+    with gr.Tab("预设音色合成"):
         gr.Markdown("### 预设音色文本合成")
         with gr.Row():
             with gr.Column(scale=2):
@@ -167,7 +167,7 @@ def tab_single_synth():
             with gr.Column(scale=2):
                 audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 status_out = gr.Textbox(label="状态", interactive=False)
-                send_to_clone_btn = gr.Button("发送到参考音频克隆")
+                send_to_clone_btn = gr.Button("发送到模仿音频设计")
 
         def on_synth(text, voice, fmt):
             if not text.strip():
@@ -185,11 +185,11 @@ def tab_single_synth():
     return audio_out, send_to_clone_btn
 
 # ===========================================================================
-# Tab 2 — 音色设计
+# Tab 2 — 自定义音色设计
 # ===========================================================================
 
 def tab_voice_design():
-    with gr.Tab("音色设计"):
+    with gr.Tab("自定义音色设计"):
         gr.Markdown('通过自然语言描述生成音色，如"一个温柔的年轻女性声音，语速适中"')
         with gr.Row():
             with gr.Column(scale=1):
@@ -217,7 +217,7 @@ def tab_voice_design():
             with gr.Column(scale=2):
                 design_audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 design_status = gr.Textbox(label="状态", interactive=False)
-                design_send_to_clone_btn = gr.Button("发送到参考音频克隆")
+                design_send_to_clone_btn = gr.Button("发送到模仿音频设计")
 
                 gr.Markdown("---\n**保存为设计角色**")
                 design_save_name = gr.Textbox(label="角色名", placeholder="例：温柔少女")
@@ -287,11 +287,11 @@ def tab_voice_design():
 
 
 # ===========================================================================
-# Tab 3 — 参考音频克隆
+# Tab 3 — 模仿音频设计
 # ===========================================================================
 
 def tab_clone():
-    with gr.Tab("参考音频克隆"):
+    with gr.Tab("模仿音频设计"):
         gr.Markdown(
             "### 上传参考音频，克隆音色合成新语音\n"
             "建议：3-15 秒，清晰无噪声；提供对应文字可显著提升克隆质量\n"
@@ -405,11 +405,11 @@ def tab_clone():
 
 
 # ===========================================================================
-# Tab 4 — 角色音色管理
+# Tab 4 — 角色管理
 # ===========================================================================
 
 def tab_character_manager():
-    with gr.Tab("角色音色管理"):
+    with gr.Tab("角色管理"):
         with gr.Tabs():
             # --- 子 Tab 1：克隆角色管理 ---
             with gr.Tab("克隆角色"):
@@ -604,7 +604,7 @@ def tab_tools():
                     with gr.Column():
                         tool_audio_out = gr.Audio(label="提取结果", type="filepath", interactive=False)
                         tool_status_out = gr.Textbox(label="状态", interactive=False)
-                        tool_send_to_clone_btn = gr.Button("发送到参考音频克隆")
+                        tool_send_to_clone_btn = gr.Button("发送到模仿音频设计")
 
                 def on_extract_audio(video, start_t, end_t, fmt):
                     if video is None:
@@ -701,7 +701,7 @@ def build_app() -> gr.Blocks:
             outputs=[design_char_dd],
         )
 
-        # 发送到参考音频克隆
+        # 发送到模仿音频设计
         synth_send_btn.click(fn=lambda a: a, inputs=[synth_audio_out], outputs=[ref_audio_in])
         design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])

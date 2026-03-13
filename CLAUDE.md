@@ -56,10 +56,10 @@ Gradio UI (app.py)
 
 | 函数 | Tab | 返回值 |
 |------|-----|--------|
-| `tab_single_synth()` | 单条合成 | `(audio_out, send_to_clone_btn)` |
-| `tab_voice_design()` | 音色设计 | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
-| `tab_clone()` | 参考音频克隆 | `(clone_char_dd, save_to_char_btn, ref_audio_in)` |
-| `tab_character_manager()` | 角色音色管理 | `(char_table, design_table, delete_clone_btn, delete_design_btn)` |
+| `tab_single_synth()` | 预设音色合成 | `(audio_out, send_to_clone_btn)` |
+| `tab_voice_design()` | 自定义音色设计 | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
+| `tab_clone()` | 模仿音频设计 | `(clone_char_dd, save_to_char_btn, ref_audio_in)` |
+| `tab_character_manager()` | 角色管理 | `(char_table, design_table, delete_clone_btn, delete_design_btn)` |
 | `tab_batch()` | 批量处理 | 无 |
 | `tab_tools()` | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)` |
 
@@ -67,8 +67,8 @@ Gradio UI (app.py)
 
 ### 跨 Tab 交互
 
-- **发送到参考音频克隆**：单条合成、音色设计、工具提取音频下方各有按钮，点击后将音频传到克隆 Tab 的 `ref_audio_in`
-- **保存角色 → 刷新管理表格**：克隆/设计 Tab 保存后自动刷新角色管理表格
+- **发送到模仿音频设计**：预设音色合成、自定义音色设计、工具提取音频下方各有按钮，点击后将音频传到模仿音频设计 Tab 的 `ref_audio_in`
+- **保存角色 → 刷新管理表格**：模仿音频设计/自定义音色设计 Tab 保存后自动刷新角色管理表格
 - **删除角色 → 刷新下拉**：角色管理删除后自动刷新合成 Tab 下拉列表
 - 所有音频输出组件设为 `interactive=False`，仅播放不可上传
 
