@@ -73,7 +73,8 @@ def character_display_rows(characters: dict) -> list[list]:
     for name, cfg in characters.items():
         vtype = "预设音色" if cfg.get("voice_type") == "preset" else "参考克隆"
         detail = cfg.get("voice_name", "") or cfg.get("ref_audio_path", "")
-        rows.append([name, vtype, detail, cfg.get("description", "")])
+        ref_text = cfg.get("ref_text", "") if cfg.get("voice_type") == "clone" else ""
+        rows.append([name, vtype, detail, ref_text, cfg.get("description", "")])
     return rows
 
 
@@ -81,12 +82,21 @@ def character_display_rows(characters: dict) -> list[list]:
 # 工具
 # ---------------------------------------------------------------------------
 
-def to_gradio_audio(audio_bytes: bytes, fmt: str) -> str:
-    """写入临时文件，返回路径供 Gradio Audio 组件播放。"""
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=f".{fmt}")
-    tmp.write(audio_bytes)
-    tmp.close()
-    return tmp.name
+import datetime
+
+
+def to_gradio_audio(audio_bytes: bytes, fmt: str, name_hint: str = "") -> str:
+    """写入 output 目录，返回路径供 Gradio Audio 组件播放。"""
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    if name_hint:
+        # 清理文件名中不安全字符
+        safe = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in name_hint)
+        filename = f"{safe}_{ts}.{fmt}"
+    else:
+        filename = f"synth_{ts}.{fmt}"
+    path = OUTPUT_DIR / filename
+    path.write_bytes(audio_bytes)
+    return str(path)
 
 
 def synth_to_file(
@@ -95,6 +105,7 @@ def synth_to_file(
     voice_name: Optional[str] = None,
     ref_audio=None,
     ref_text: Optional[str] = None,
+    name_hint: str = "",
 ) -> tuple[Optional[str], str]:
     """通用合成 → (audio_path | None, status)"""
     try:
@@ -106,8 +117,8 @@ def synth_to_file(
         )
         audio = normalize_audio(audio)
         out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
-        path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt)
-        return path, f"合成成功（{len(audio)/sr:.1f} 秒）"
+        path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint)
+        return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{path}"
     except Exception as e:
         logger.exception("合成失败")
         return None, f"合成失败：{e}"
@@ -159,7 +170,8 @@ def tab_single_synth():
             elif voice and voice != "（默认）":
                 voice_name = voice
 
-            return synth_to_file(text, fmt, voice_name, ref_audio, ref_text)
+            hint = char if char and char != "（不使用角色）" else (voice if voice and voice != "（默认）" else "")
+            return synth_to_file(text, fmt, voice_name, ref_audio, ref_text, name_hint=hint)
 
         synth_btn.click(
             fn=on_synth,
@@ -178,10 +190,24 @@ def tab_clone():
     with gr.Tab("参考音频克隆"):
         gr.Markdown(
             "### 上传参考音频，克隆音色合成新语音\n"
-            "建议：3-15 秒，清晰无噪声；提供对应文字可显著提升克隆质量"
+            "建议：3-15 秒，清晰无噪声；提供对应文字可显著提升克隆质量\n"
+            "也可从角色库选择已有的克隆角色，直接使用其参考音频"
         )
         with gr.Row():
             with gr.Column():
+                # 从角色库选择已有克隆角色
+                def _clone_char_choices():
+                    chars = load_characters()
+                    return ["（不使用角色）"] + [
+                        name for name, cfg in chars.items()
+                        if cfg.get("voice_type") == "clone"
+                    ]
+
+                clone_char_dd = gr.Dropdown(
+                    choices=_clone_char_choices(),
+                    value="（不使用角色）",
+                    label="从角色库选择（仅克隆类型）",
+                )
                 ref_audio_in = gr.Audio(
                     label="参考音频（WAV / MP3）",
                     type="filepath",
@@ -209,12 +235,31 @@ def tab_clone():
                 save_to_char_btn = gr.Button("保存到角色管理", variant="secondary")
                 save_char_status = gr.Textbox(label="保存状态", interactive=False)
 
-        def on_clone(ref_audio, ref_t, text, fmt):
+        def on_char_select(char_name):
+            """选择角色后自动填充参考音频路径和对应文字。"""
+            if not char_name or char_name == "（不使用角色）":
+                return gr.update(), gr.update(value="")
+            chars = load_characters()
+            cfg = chars.get(char_name, {})
+            ref_path = cfg.get("ref_audio_path", "")
+            ref_text = cfg.get("ref_text", "")
+            if ref_path and Path(ref_path).exists():
+                return gr.update(value=ref_path), gr.update(value=ref_text)
+            return gr.update(), gr.update(value=ref_text)
+
+        clone_char_dd.change(
+            fn=on_char_select,
+            inputs=[clone_char_dd],
+            outputs=[ref_audio_in, ref_text_in],
+        )
+
+        def on_clone(char_sel, ref_audio, ref_t, text, fmt):
             if ref_audio is None:
                 return None, "请先上传参考音频"
             if not text.strip():
                 return None, "待合成文本不能为空"
-            return synth_to_file(text, fmt, ref_audio=ref_audio, ref_text=ref_t.strip() or None)
+            hint = char_sel if char_sel and char_sel != "（不使用角色）" else "clone"
+            return synth_to_file(text, fmt, ref_audio=ref_audio, ref_text=ref_t.strip() or None, name_hint=hint)
 
         def on_save_to_char(ref_audio, ref_t, char_name, char_desc):
             char_name = char_name.strip()
@@ -237,7 +282,7 @@ def tab_clone():
 
         clone_btn.click(
             fn=on_clone,
-            inputs=[ref_audio_in, ref_text_in, clone_text_in, clone_fmt],
+            inputs=[clone_char_dd, ref_audio_in, ref_text_in, clone_text_in, clone_fmt],
             outputs=[clone_audio_out, clone_status],
         )
         save_to_char_btn.click(
@@ -256,8 +301,8 @@ def tab_character_manager():
         gr.Markdown("### 管理游戏角色与对应音色配置")
 
         char_table = gr.Dataframe(
-            headers=["角色名", "音色类型", "音色详情", "描述"],
-            datatype=["str", "str", "str", "str"],
+            headers=["角色名", "音色类型", "音色详情", "参考文字", "描述"],
+            datatype=["str", "str", "str", "str", "str"],
             label="角色列表",
             interactive=False,
             value=character_display_rows(load_characters()),
