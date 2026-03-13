@@ -113,15 +113,18 @@ import datetime
 
 
 def to_gradio_audio(audio_bytes: bytes, fmt: str, name_hint: str = "") -> str:
-    """写入 output 目录，返回路径供 Gradio Audio 组件播放。"""
-    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    """写入 output/日期 子目录，返回路径供 Gradio Audio 组件播放。"""
+    now = datetime.datetime.now()
+    date_dir = OUTPUT_DIR / now.strftime("%Y-%m-%d")
+    date_dir.mkdir(parents=True, exist_ok=True)
+    ts = now.strftime("%Y%m%d_%H%M%S")
     if name_hint:
         # 清理文件名中不安全字符
         safe = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in name_hint)
         filename = f"{safe}_{ts}.{fmt}"
     else:
         filename = f"synth_{ts}.{fmt}"
-    path = OUTPUT_DIR / filename
+    path = date_dir / filename
     path.write_bytes(audio_bytes)
     return str(path)
 
@@ -676,14 +679,14 @@ def tab_tools():
 # ===========================================================================
 
 def _scan_audio_files(keyword: str = "", fmt_filter: str = "全部") -> list[list]:
-    """扫描 OUTPUT_DIR 下的 .wav/.mp3 文件，按修改时间倒序返回表格行。"""
+    """递归扫描 OUTPUT_DIR 下的 .wav/.mp3 文件，按修改时间倒序返回表格行。"""
     exts = (".wav", ".mp3")
     if fmt_filter == "WAV":
         exts = (".wav",)
     elif fmt_filter == "MP3":
         exts = (".mp3",)
     files = [
-        f for f in OUTPUT_DIR.iterdir()
+        f for f in OUTPUT_DIR.rglob("*")
         if f.is_file() and f.suffix.lower() in exts
     ]
     if keyword and keyword.strip():
@@ -692,8 +695,8 @@ def _scan_audio_files(keyword: str = "", fmt_filter: str = "全部") -> list[lis
     files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
     rows = []
     for f in files:
-        mtime_str = datetime.datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-        rows.append([f.name, mtime_str])
+        rel = f.relative_to(OUTPUT_DIR).as_posix()
+        rows.append([rel])
     return rows
 
 
@@ -717,8 +720,8 @@ def tab_audio_browser():
         with gr.Row():
             with gr.Column(scale=1):
                 browser_table = gr.Dataframe(
-                    headers=["文件名", "修改时间"],
-                    datatype=["str", "str"],
+                    headers=["文件名"],
+                    datatype=["str"],
                     label="音频文件列表",
                     interactive=False,
                     value=_scan_audio_files(),
@@ -750,7 +753,7 @@ def tab_audio_browser():
             if row_idx < 0 or row_idx >= len(table_data):
                 return None, ""
             filename = table_data.iloc[row_idx, 0]
-            filepath = OUTPUT_DIR / filename
+            filepath = OUTPUT_DIR / filename  # filename 可能含日期子目录如 2026-03-14/xxx.wav
             if filepath.exists():
                 return str(filepath), _audio_detail(filepath)
             return None, ""
