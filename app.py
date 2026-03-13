@@ -585,7 +585,6 @@ def build_app() -> gr.Blocks:
         tab_single_synth()
         tab_clone()
         tab_character_manager()
-        tab_batch()
         tab_tools()
 
     return demo
