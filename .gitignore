@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 .env
 *.egg-info/
+characters.json
+design_characters.json
+.claude/settings.local.json
