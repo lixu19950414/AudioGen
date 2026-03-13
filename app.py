@@ -19,6 +19,7 @@ import logging
 import shutil
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -714,6 +715,28 @@ def _audio_detail(filepath: Path) -> str:
     )
 
 
+def _batch_download(table_data) -> Optional[str]:
+    """将当前列表中的音频文件打包为 ZIP 下载。"""
+    if table_data is None or len(table_data) == 0:
+        return None
+    # 收集有效文件
+    files = []
+    for i in range(len(table_data)):
+        rel = table_data.iloc[i, 0] if hasattr(table_data, "iloc") else table_data[i][0]
+        fp = OUTPUT_DIR / rel
+        if fp.exists():
+            files.append((fp, rel))
+    if not files:
+        return None
+    # 创建临时 ZIP
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False, dir=str(OUTPUT_DIR))
+    tmp.close()
+    with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
+        for fp, rel in files:
+            zf.write(fp, rel)
+    return tmp.name
+
+
 def tab_audio_browser():
     with gr.Tab("音频浏览"):
         gr.Markdown("### 浏览已生成的音频文件")
@@ -740,6 +763,8 @@ def tab_audio_browser():
                         scale=1,
                     )
                 refresh_btn = gr.Button("刷新列表")
+                batch_download_btn = gr.Button("批量下载（当前列表）")
+                batch_download_file = gr.File(label="下载 ZIP", visible=False)
                 browser_audio_out = gr.Audio(label="播放音频", type="filepath", interactive=False)
                 browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
                 browser_detail = gr.Textbox(label="音频详情", interactive=False, lines=4)
@@ -747,6 +772,18 @@ def tab_audio_browser():
         refresh_btn.click(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
         filter_keyword.change(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
         filter_fmt.change(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
+
+        def on_batch_download(table_data):
+            zip_path = _batch_download(table_data)
+            if zip_path:
+                return gr.update(value=zip_path, visible=True)
+            return gr.update(value=None, visible=False)
+
+        batch_download_btn.click(
+            fn=on_batch_download,
+            inputs=[browser_table],
+            outputs=[batch_download_file],
+        )
 
         def on_select(evt: gr.SelectData, table_data):
             row_idx = evt.index[0]
