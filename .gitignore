@@ -1,4 +1,5 @@
 output/
+output_batch/
 data/reference_audio/
 __pycache__/
 *.pyc

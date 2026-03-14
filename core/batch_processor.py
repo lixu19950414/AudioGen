@@ -62,23 +62,23 @@ class BatchProcessor:
     def run(
         self,
         df: pd.DataFrame,
-        text_col: str,
         output_dir: str | Path,
         output_format: AudioFormat = "wav",
-        char_col: Optional[str] = None,
-        filename_col: Optional[str] = None,
         characters: Optional[dict] = None,
+        design_characters: Optional[dict] = None,
         progress_cb: Optional[Callable[[int, int, str], None]] = None,
     ) -> BatchResult:
-        """逐行合成。columns: text（必填）、character（可选）、filename（可选）。"""
+        """逐行合成。固定列名：character（必填）、text（必填）、filename（可选）。"""
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         characters = characters or {}
+        design_characters = design_characters or {}
         result = BatchResult(total=len(df))
 
         for idx, row in df.iterrows():
             row_num = int(idx) + 1  # type: ignore
-            text = str(row.get(text_col, "")).strip()
+            text = str(row.get("text", "")).strip()
+            char_name = str(row.get("character", "")).strip()
 
             if not text:
                 msg = f"第 {row_num} 行：文本为空，跳过"
@@ -89,42 +89,55 @@ class BatchProcessor:
                     progress_cb(row_num, result.total, msg)
                 continue
 
+            if not char_name:
+                msg = f"第 {row_num} 行：角色为空，跳过"
+                logger.warning(msg)
+                result.failed += 1
+                result.errors.append(msg)
+                if progress_cb:
+                    progress_cb(row_num, result.total, msg)
+                continue
+
             # 输出文件名
-            stem = (
-                str(row[filename_col]).strip()
-                if (filename_col and row.get(filename_col, "").strip())
-                else f"{row_num:04d}"
-            )
+            fname = str(row.get("filename", "")).strip()
+            stem = fname if fname else f"{row_num:04d}"
             out_path = output_dir / f"{stem}.{output_format}"
 
-            # 音色参数
-            voice_name: Optional[str] = None
-            ref_audio = None
-            ref_text: Optional[str] = None
-
-            if char_col and row.get(char_col, "").strip():
-                char_name = str(row[char_col]).strip()
-                cfg = characters.get(char_name, {})
-                if cfg.get("voice_type") == "preset":
-                    voice_name = cfg.get("voice_name")
-                elif cfg.get("voice_type") == "clone":
-                    rp = cfg.get("ref_audio_path", "")
-                    if rp:
-                        abs_rp = (Path(__file__).resolve().parent.parent / rp) if not Path(rp).is_absolute() else Path(rp)
-                        if abs_rp.exists():
-                            ref_audio = str(abs_rp)
-                            ref_text = cfg.get("ref_text")
+            # 查找角色配置
+            cfg = characters.get(char_name) or design_characters.get(char_name)
+            if not cfg:
+                msg = f"第 {row_num} 行：角色「{char_name}」不存在，跳过"
+                logger.warning(msg)
+                result.failed += 1
+                result.errors.append(msg)
+                if progress_cb:
+                    progress_cb(row_num, result.total, msg)
+                continue
 
             try:
                 if progress_cb:
                     progress_cb(row_num, result.total, f"正在合成 {row_num}/{result.total}：{text[:30]}…")
 
-                audio, sr = self.engine.synthesize(
-                    text=text,
-                    voice_name=voice_name,
-                    ref_audio=ref_audio,
-                    ref_text=ref_text,
-                )
+                voice_type = cfg.get("voice_type", "")
+
+                if voice_type == "design":
+                    instruct = cfg.get("instruct", "")
+                    audio, sr = self.engine.voice_design(text=text, instruct=instruct)
+                elif voice_type == "clone":
+                    rp = cfg.get("ref_audio_path", "")
+                    ref_audio = None
+                    ref_text = None
+                    if rp:
+                        abs_rp = (Path(__file__).resolve().parent.parent / rp) if not Path(rp).is_absolute() else Path(rp)
+                        if abs_rp.exists():
+                            ref_audio = str(abs_rp)
+                            ref_text = cfg.get("ref_text")
+                    audio, sr = self.engine.synthesize(text=text, ref_audio=ref_audio, ref_text=ref_text)
+                else:
+                    # preset
+                    voice_name = cfg.get("voice_name")
+                    audio, sr = self.engine.synthesize(text=text, voice_name=voice_name)
+
                 audio = normalize_audio(audio)
                 saved = save_audio(audio, sr, out_path, output_format)
                 result.success += 1
