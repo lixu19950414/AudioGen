@@ -14,13 +14,9 @@ from ui.common import OUTPUT_DIR
 from core.app_logger import log_event, EVENT_DOWNLOAD
 
 
-def _scan_audio_files(keyword: str = "", fmt_filter: str = "全部") -> list[list]:
+def _scan_audio_files(keyword: str = "") -> list[list]:
     """递归扫描 OUTPUT_DIR 下的 .wav/.mp3 文件，按修改时间倒序返回表格行。"""
     exts = (".wav", ".mp3")
-    if fmt_filter == "WAV":
-        exts = (".wav",)
-    elif fmt_filter == "MP3":
-        exts = (".mp3",)
     files = [
         f for f in OUTPUT_DIR.rglob("*")
         if f.is_file() and f.suffix.lower() in exts
@@ -99,13 +95,6 @@ def tab_audio_browser():
                     filter_keyword = gr.Textbox(
                         label="文件名搜索",
                         placeholder="输入关键词过滤…",
-                        scale=3,
-                    )
-                    filter_fmt = gr.Radio(
-                        choices=["全部", "WAV", "MP3"],
-                        value="全部",
-                        label="格式",
-                        scale=1,
                     )
                 with gr.Row():
                     refresh_btn = gr.Button("刷新列表")
@@ -119,9 +108,8 @@ def tab_audio_browser():
                 browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
                 browser_detail = gr.Textbox(label="音频详情", interactive=False, lines=4)
 
-        refresh_btn.click(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
-        filter_keyword.change(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
-        filter_fmt.change(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
+        refresh_btn.click(fn=_scan_audio_files, inputs=[filter_keyword], outputs=[browser_table])
+        filter_keyword.change(fn=_scan_audio_files, inputs=[filter_keyword], outputs=[browser_table])
 
         def _toggle_all(table_data, checked: bool):
             if table_data is None or len(table_data) == 0:
