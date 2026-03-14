@@ -56,12 +56,33 @@ class TTSEngine:
         logger.info("TTSEngine 初始化，device=%s", self.device)
 
     # ------------------------------------------------------------------
-    # 模型加载
+    # 模型加载（同一时刻只保留一个模型）
     # ------------------------------------------------------------------
 
+    def _unload_all_models(self):
+        """卸载所有已加载的模型，释放显存。"""
+        unloaded = []
+        if self._model is not None:
+            self._model = None
+            self._dynamic_speakers = None
+            unloaded.append("CustomVoice")
+        if self._base_model is not None:
+            self._base_model = None
+            unloaded.append("Base")
+        if self._voice_design_model is not None:
+            self._voice_design_model = None
+            unloaded.append("VoiceDesign")
+        if unloaded and torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        if unloaded:
+            names = ", ".join(unloaded)
+            logger.info("已卸载模型：%s", names)
+            log_event(EVENT_MODEL_UNLOAD, f"已卸载模型：{names}", user="system")
+
     def _get_model(self):
-        """加载 CustomVoice 模型（预设音色合成）。"""
+        """加载 CustomVoice 模型（预设音色合成），卸载其他模型。"""
         if self._model is None:
+            self._unload_all_models()
             try:
                 from qwen_tts import Qwen3TTSModel  # type: ignore
             except ImportError as e:
@@ -86,8 +107,9 @@ class TTSEngine:
         return self._model
 
     def _get_base_model(self):
-        """加载 Base 模型（参考音频克隆）。"""
+        """加载 Base 模型（参考音频克隆），卸载其他模型。"""
         if self._base_model is None:
+            self._unload_all_models()
             try:
                 from qwen_tts import Qwen3TTSModel  # type: ignore
             except ImportError as e:
@@ -104,8 +126,9 @@ class TTSEngine:
         return self._base_model
 
     def _get_voice_design_model(self):
-        """加载 VoiceDesign 模型（自然语言描述音色）。"""
+        """加载 VoiceDesign 模型（自然语言描述音色），卸载其他模型。"""
         if self._voice_design_model is None:
+            self._unload_all_models()
             try:
                 from qwen_tts import Qwen3TTSModel  # type: ignore
             except ImportError as e:
