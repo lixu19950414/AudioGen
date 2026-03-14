@@ -60,7 +60,7 @@ def build_app() -> gr.Blocks:
         clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
         char_table, design_table, delete_clone_btn, delete_design_btn = tab_character_manager()
         tab_batch()
-        tool_audio_out, tool_send_btn = tab_tools()
+        tool_audio_out, tool_send_btn, sep_vocals_out, sep_send_btn = tab_tools()
         browser_audio_out, browser_send_btn = tab_audio_browser()
         tab_batch_download()
 
@@ -87,6 +87,7 @@ def build_app() -> gr.Blocks:
         synth_send_btn.click(fn=lambda a: a, inputs=[synth_audio_out], outputs=[ref_audio_in])
         design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])
+        sep_send_btn.click(fn=lambda a: a, inputs=[sep_vocals_out], outputs=[ref_audio_in])
         browser_send_btn.click(fn=lambda a: a, inputs=[browser_audio_out], outputs=[ref_audio_in])
 
         # 页面加载时记录登录日志

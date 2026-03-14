@@ -8,3 +8,4 @@ pydub
 pandas
 openpyxl
 numpy
+demucs

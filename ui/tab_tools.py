@@ -120,7 +120,76 @@ def tab_tools():
                 )
 
             # ---------------------------------------------------------------
-            # 工具 2 — 日志查看
+            # 工具 2 — 人声分离
+            # ---------------------------------------------------------------
+            with gr.Tab("人声分离"):
+                gr.Markdown(
+                    "### 使用 Demucs 分离人声与伴奏\n"
+                    "> 上传音频文件，自动分离出人声和伴奏。分离后的人声可发送到模仿音频设计进行音色克隆。"
+                )
+                with gr.Row():
+                    with gr.Column():
+                        sep_audio_in = gr.Audio(label="上传音频", type="filepath")
+                        sep_model = gr.Dropdown(
+                            choices=["htdemucs", "htdemucs_ft", "mdx_extra"],
+                            value="htdemucs",
+                            label="分离模型",
+                            info="htdemucs: 速度快；htdemucs_ft: 质量更高；mdx_extra: 适合音乐",
+                        )
+                        sep_btn = gr.Button("开始分离", variant="primary")
+
+                    with gr.Column():
+                        sep_vocals_out = gr.Audio(label="人声", type="filepath", interactive=False)
+                        sep_accomp_out = gr.Audio(label="伴奏", type="filepath", interactive=False)
+                        sep_status_out = gr.Textbox(label="状态", interactive=False)
+                        sep_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+
+                def on_separate_vocals(audio_path, model_name):
+                    if audio_path is None:
+                        return None, None, "请先上传音频文件"
+
+                    try:
+                        import torch
+                        from demucs.api import Separator
+
+                        device = "cuda" if torch.cuda.is_available() else "cpu"
+                        separator = Separator(model=model_name, device=device)
+                        _, separated = separator.separate_audio_file(audio_path)
+
+                        vocals = separated["vocals"].cpu().numpy()
+                        # 合并非人声轨道为伴奏
+                        accomp_keys = [k for k in separated.keys() if k != "vocals"]
+                        accomp = sum(separated[k] for k in accomp_keys).cpu().numpy()
+
+                        sample_rate = separator.samplerate
+
+                        import soundfile as sf
+
+                        vocals_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+                        vocals_tmp.close()
+                        accomp_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+                        accomp_tmp.close()
+
+                        # Demucs 输出形状为 (channels, samples)，需要转置为 (samples, channels)
+                        sf.write(vocals_tmp.name, vocals.T, sample_rate)
+                        sf.write(accomp_tmp.name, accomp.T, sample_rate)
+
+                        return vocals_tmp.name, accomp_tmp.name, f"分离完成！模型: {model_name}"
+
+                    except ImportError:
+                        return None, None, "请先安装 demucs：pip install demucs"
+                    except Exception as e:
+                        logger.exception("人声分离失败")
+                        return None, None, f"分离失败：{e}"
+
+                sep_btn.click(
+                    fn=on_separate_vocals,
+                    inputs=[sep_audio_in, sep_model],
+                    outputs=[sep_vocals_out, sep_accomp_out, sep_status_out],
+                )
+
+            # ---------------------------------------------------------------
+            # 工具 3 — 日志查看
             # ---------------------------------------------------------------
             with gr.Tab("日志查看"):
                 gr.Markdown("### 查看系统操作日志")
@@ -154,4 +223,4 @@ def tab_tools():
                     outputs=[log_output],
                 )
 
-    return tool_audio_out, tool_send_to_clone_btn
+    return tool_audio_out, tool_send_to_clone_btn, sep_vocals_out, sep_send_to_clone_btn
