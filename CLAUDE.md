@@ -13,7 +13,7 @@ pip install -r requirements.txt   # 首次安装依赖
 python app.py                      # 启动，访问 http://localhost:7860
 ```
 
-> MP3 输出依赖系统安装的 `ffmpeg`（需在 PATH 中）。模型权重首次运行时从 HuggingFace 自动下载（已缓存在 `~/.cache/huggingface/hub/`）。Windows 下启动时会出现 SoX 找不到的警告，可忽略，不影响功能。
+> MP3 输出依赖系统安装的 `ffmpeg`（需在 PATH 中）。模型权重首次运行时从 HuggingFace 自动下载，缓存在项目根目录 `models/`（通过 `HF_HUB_CACHE` 环境变量设置）。Windows 下启动时会出现 SoX 找不到的警告，可忽略，不影响功能。
 
 ## 架构
 
@@ -21,8 +21,9 @@ python app.py                      # 启动，访问 http://localhost:7860
 
 ```
 Gradio UI (app.py)
-    └── ui/common.py                         ← 全局 engine/batch_processor 单例、路径常量、角色数据函数、synth_to_file
+    └── ui/common.py                         ← 全局 engine/batch_processor/task_queue 单例、路径常量、角色数据函数、synth_to_file
     └── ui/tab_*.py                          ← 每个 Tab 一个文件
+    └── TaskQueue (core/task_queue.py)       ← 单 worker 线程，保证同一时间只执行一个推理任务
     └── TTSEngine (core/tts_engine.py)       ← 单例，延迟加载
             └── CustomVoice 模型（三种合成模式）
                   ├── generate_custom_voice   预设音色（_preset）
@@ -33,14 +34,14 @@ Gradio UI (app.py)
     └── audio_utils (core/audio_utils.py)
             └── numpy array → WAV/MP3 bytes
     └── app_logger (core/app_logger.py)      ← 业务事件日志，按天轮转写入 logs/
-    └── config.py                            ← HF 环境变量 + AUTH_USERS，最早导入
+    └── config.py                            ← HF 环境变量 + AUTH_USERS + 模型缓存目录，最早导入
 ```
 
 ### 模型
 
 只使用 **一个**模型：`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`，通过 `TTSEngine._get_model()` 延迟加载。
 
-- `config.py` 设置 `HF_ENDPOINT`（默认 `http://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），必须在其他模块之前导入。
+- `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），必须在其他模块之前导入。
 - 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
 - `qwen_tts.Qwen3TTSModel` 的方法返回 `(List[np.ndarray], int)`，取 `[0]` 得到单条音频。
 
@@ -53,9 +54,13 @@ Gradio UI (app.py)
 
 `generate_voice_clone` 默认 `non_streaming_mode=False`，**调用时必须显式传 `True`**。
 
+### 任务队列（core/task_queue.py）
+
+`TaskQueue` 使用单 worker 线程，保证同一时间只有一个模型推理任务在执行。各 Tab 提交合成任务时通过 `task_queue.submit()` 入队，任务类型包括 `"preset"` / `"clone"` / `"design"` / `"batch"`。任务状态：`queued` → `running` → `done` / `error`。
+
 ### Gradio UI（app.py）
 
-共 7 个 Tab，`build_app()` 中依次调用：
+共 8 个 Tab，`build_app()` 中依次调用：
 
 | 函数 | Tab | 返回值 |
 |------|-----|--------|
@@ -66,6 +71,9 @@ Gradio UI (app.py)
 | `tab_batch()` | 批量处理 | 无 |
 | `tab_tools()` | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)` |
 | `tab_audio_browser()` | 音频浏览 | `(browser_audio_out, browser_send_to_clone_btn)` |
+| `tab_batch_download()` | 批量下载 | 无 |
+
+`build_app()` 顶部还包含一个**任务队列状态面板**（`gr.Timer` 每秒轮询），显示当前执行和等待中的推理任务。
 
 各 Tab 函数返回需要跨 Tab 交互的组件，在 `build_app()` 中统一连接事件。
 
