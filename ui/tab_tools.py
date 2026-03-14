@@ -150,18 +150,29 @@ def tab_tools():
 
                     try:
                         import torch
-                        from demucs.api import Separator
+                        import torchaudio
+                        from demucs.pretrained import get_model
+                        from demucs.apply import apply_model
 
                         device = "cuda" if torch.cuda.is_available() else "cpu"
-                        separator = Separator(model=model_name, device=device)
-                        _, separated = separator.separate_audio_file(audio_path)
+                        model = get_model(model_name)
+                        model.to(device)
+                        sample_rate = model.samplerate
 
-                        vocals = separated["vocals"].cpu().numpy()
+                        wav, sr = torchaudio.load(audio_path)
+                        if sr != sample_rate:
+                            wav = torchaudio.functional.resample(wav, sr, sample_rate)
+                        # apply_model 期望 (batch, channels, samples)
+                        wav = wav.unsqueeze(0).to(device)
+                        sources = apply_model(model, wav)  # (batch, n_sources, channels, samples)
+                        sources = sources[0]  # (n_sources, channels, samples)
+
+                        source_names = model.sources  # e.g. ['drums', 'bass', 'other', 'vocals']
+                        vocals_idx = source_names.index("vocals")
+                        vocals = sources[vocals_idx].cpu().numpy()
                         # 合并非人声轨道为伴奏
-                        accomp_keys = [k for k in separated.keys() if k != "vocals"]
-                        accomp = sum(separated[k] for k in accomp_keys).cpu().numpy()
-
-                        sample_rate = separator.samplerate
+                        accomp_indices = [i for i, name in enumerate(source_names) if name != "vocals"]
+                        accomp = sum(sources[i] for i in accomp_indices).cpu().numpy()
 
                         import soundfile as sf
 
