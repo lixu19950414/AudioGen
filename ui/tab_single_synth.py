@@ -22,12 +22,12 @@ def tab_single_synth():
                 status_out = gr.Textbox(label="状态", interactive=False)
                 send_to_clone_btn = gr.Button("发送到模仿音频设计")
 
-        def on_synth(text, voice, fmt):
+        def on_synth(text, voice, fmt, request: gr.Request):
             if not text.strip():
                 return None, "文本不能为空"
             voice_name = voice or None
             hint = voice or ""
-            return synth_to_file(text, fmt, voice_name, name_hint=hint, char_name=hint)
+            return synth_to_file(text, fmt, voice_name, name_hint=hint, char_name=hint, request=request)
 
         synth_btn.click(
             fn=on_synth,

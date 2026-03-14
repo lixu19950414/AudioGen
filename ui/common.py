@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import gradio as gr
 
 from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
 from core.batch_processor import BatchProcessor
@@ -111,8 +112,10 @@ def synth_to_file(
     ref_text: Optional[str] = None,
     name_hint: str = "",
     char_name: str = "",
+    request: gr.Request = None,
 ) -> tuple[Optional[str], str]:
     """通用合成 → (audio_path | None, status)"""
+    user = (request.username or "unknown") if request else "-"
     try:
         audio, sr = engine.synthesize(
             text=text,
@@ -127,9 +130,9 @@ def synth_to_file(
         rel_path = Path(path).relative_to(BASE_DIR).as_posix()
         char_info = f" 角色={char_name}" if char_name else ""
         if ref_audio is not None:
-            log_event(EVENT_SYNTHESIZE, f"类型=克隆合成{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}")
+            log_event(EVENT_SYNTHESIZE, f"类型=克隆合成{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
         else:
-            log_event(EVENT_SYNTHESIZE, f"类型=预设合成{char_info} 文本={text[:50]} 音色={voice_name or '默认'} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}")
+            log_event(EVENT_SYNTHESIZE, f"类型=预设合成{char_info} 文本={text[:50]} 音色={voice_name or '默认'} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
         return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{rel_path}"
     except Exception as e:
         logger.exception("合成失败")

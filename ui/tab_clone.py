@@ -85,21 +85,22 @@ def tab_clone():
             outputs=[ref_audio_in, ref_text_in],
         )
 
-        def on_clone(char_sel, ref_audio, ref_t, text, fmt):
+        def on_clone(char_sel, ref_audio, ref_t, text, fmt, request: gr.Request):
             if ref_audio is None:
                 return None, "请先上传参考音频"
             if not text.strip():
                 return None, "待合成文本不能为空"
             hint = char_sel if char_sel and char_sel != "（不使用角色）" else "clone"
             char = char_sel if char_sel and char_sel != "（不使用角色）" else ""
-            return synth_to_file(text, fmt, ref_audio=ref_audio, ref_text=ref_t.strip() or None, name_hint=hint, char_name=char)
+            return synth_to_file(text, fmt, ref_audio=ref_audio, ref_text=ref_t.strip() or None, name_hint=hint, char_name=char, request=request)
 
-        def on_save_to_char(ref_audio, ref_t, char_name, char_desc):
+        def on_save_to_char(ref_audio, ref_t, char_name, char_desc, request: gr.Request):
             char_name = char_name.strip()
             if not char_name:
                 return "角色名不能为空", gr.update()
             if ref_audio is None:
                 return "请先上传参考音频", gr.update()
+            user = (request.username or "unknown") if request else "-"
             src = Path(ref_audio)
             dest = REF_AUDIO_DIR / f"{char_name}{src.suffix}"
             shutil.copy2(src, dest)
@@ -111,7 +112,7 @@ def tab_clone():
                 "ref_text": ref_t.strip() if ref_t else "",
             }
             save_characters(chars)
-            log_event(EVENT_CHAR_ADD, f"克隆角色={char_name} 参考音频={dest.name}")
+            log_event(EVENT_CHAR_ADD, f"克隆角色={char_name} 参考音频={dest.name}", user=user)
             new_choices = ["（不使用角色）"] + list(chars.keys())
             return (
                 f"已保存角色 [{char_name}]，参考音频：{dest.name}",

@@ -82,7 +82,7 @@ class TTSEngine:
             except Exception:
                 pass
             logger.info("CustomVoice 模型加载完成")
-            log_event(EVENT_MODEL_LOAD, f"模型=CustomVoice ({CUSTOM_VOICE_MODEL_ID})")
+            log_event(EVENT_MODEL_LOAD, f"模型=CustomVoice ({CUSTOM_VOICE_MODEL_ID})", user="system")
         return self._model
 
     def _get_base_model(self):
@@ -100,7 +100,7 @@ class TTSEngine:
                 dtype=torch.bfloat16,
             )
             logger.info("Base 模型加载完成")
-            log_event(EVENT_MODEL_LOAD, f"模型=Base ({BASE_MODEL_ID})")
+            log_event(EVENT_MODEL_LOAD, f"模型=Base ({BASE_MODEL_ID})", user="system")
         return self._base_model
 
     def _get_voice_design_model(self):
@@ -118,7 +118,7 @@ class TTSEngine:
                 dtype=torch.bfloat16,
             )
             logger.info("VoiceDesign 模型加载完成")
-            log_event(EVENT_MODEL_LOAD, f"模型=VoiceDesign ({VOICE_DESIGN_MODEL_ID})")
+            log_event(EVENT_MODEL_LOAD, f"模型=VoiceDesign ({VOICE_DESIGN_MODEL_ID})", user="system")
         return self._voice_design_model
 
     def get_preset_voices(self) -> list[str]:
@@ -221,4 +221,4 @@ class TTSEngine:
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         logger.info("模型已卸载，显存已释放")
-        log_event(EVENT_MODEL_UNLOAD, "所有模型已卸载")
+        log_event(EVENT_MODEL_UNLOAD, "所有模型已卸载", user="system")

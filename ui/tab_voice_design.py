@@ -67,18 +67,19 @@ def tab_voice_design():
             outputs=[design_instruct],
         )
 
-        def on_voice_design(instruct, text, fmt):
+        def on_voice_design(instruct, text, fmt, request: gr.Request):
             if not instruct.strip():
                 return None, "请输入音色描述"
             if not text.strip():
                 return None, "待合成文本不能为空"
+            user = (request.username or "unknown") if request else "-"
             try:
                 audio, sr = engine.voice_design(text=text, instruct=instruct)
                 audio = normalize_audio(audio)
                 out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
                 path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint="design")
                 rel_path = Path(path).relative_to(BASE_DIR).as_posix()
-                log_event(EVENT_SYNTHESIZE, f"类型=音色设计 文本={text[:50]} 音色描述={instruct[:50]} 格式={fmt} 时长={len(audio)/sr:.1f}s 文件={rel_path}")
+                log_event(EVENT_SYNTHESIZE, f"类型=音色设计 文本={text[:50]} 音色描述={instruct[:50]} 格式={fmt} 时长={len(audio)/sr:.1f}s 文件={rel_path}", user=user)
                 return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{rel_path}"
             except Exception as e:
                 return None, f"合成失败：{e}"
@@ -89,12 +90,13 @@ def tab_voice_design():
             outputs=[design_audio_out, design_status],
         )
 
-        def on_save_design_char(instruct, char_name, char_desc):
+        def on_save_design_char(instruct, char_name, char_desc, request: gr.Request):
             char_name = char_name.strip()
             if not char_name:
                 return "角色名不能为空", gr.update()
             if not instruct.strip():
                 return "音色描述不能为空", gr.update()
+            user = (request.username or "unknown") if request else "-"
             chars = load_design_characters()
             chars[char_name] = {
                 "description": char_desc.strip(),
@@ -102,7 +104,7 @@ def tab_voice_design():
                 "instruct": instruct.strip(),
             }
             save_design_characters(chars)
-            log_event(EVENT_CHAR_ADD, f"设计角色={char_name} 描述={instruct.strip()[:30]}")
+            log_event(EVENT_CHAR_ADD, f"设计角色={char_name} 描述={instruct.strip()[:30]}", user=user)
             new_choices = ["（不使用角色）"] + list(chars.keys())
             return (
                 f"已保存设计角色 [{char_name}]",

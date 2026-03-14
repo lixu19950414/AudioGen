@@ -37,9 +37,9 @@ EVENT_MODEL_UNLOAD = "model_unload"
 ALL_EVENT_TYPES = [EVENT_LOGIN, EVENT_SYNTHESIZE, EVENT_DOWNLOAD, EVENT_CHAR_ADD, EVENT_CHAR_REMOVE, EVENT_MODEL_LOAD, EVENT_MODEL_UNLOAD]
 
 
-def log_event(event_type: str, detail: str = ""):
-    """记录一条业务事件日志。格式: 时间\t事件类型\t详情"""
-    _logger.info("%s\t%s", event_type, detail)
+def log_event(event_type: str, detail: str = "", user: str = ""):
+    """记录一条业务事件日志。格式: 时间\t事件类型\t用户\t详情"""
+    _logger.info("%s\t%s\t%s", event_type, user or "-", detail)
 
 
 def read_logs(date: str | None = None, event_type: str | None = None, tail: int = 500) -> str:

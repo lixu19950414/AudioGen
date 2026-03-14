@@ -50,7 +50,7 @@ def _audio_detail(filepath: Path) -> str:
     )
 
 
-def _batch_download(table_data, selected_only: bool = True) -> Optional[str]:
+def _batch_download(table_data, selected_only: bool = True, user: str = "-") -> Optional[str]:
     """将选中（或全部）音频文件打包为 ZIP 下载。"""
     if table_data is None or len(table_data) == 0:
         return None
@@ -72,7 +72,7 @@ def _batch_download(table_data, selected_only: bool = True) -> Optional[str]:
     # 记录下载日志（所有文件名放在一条日志中）
     mode = "选中" if selected_only else "全部"
     names = ", ".join(rel for _, rel in files)
-    log_event(EVENT_DOWNLOAD, f"下载文件({mode}) 文件数={len(files)} [{names}]")
+    log_event(EVENT_DOWNLOAD, f"下载文件({mode}) 文件数={len(files)} [{names}]", user=user)
     tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False, dir=str(OUTPUT_DIR))
     tmp.close()
     with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -146,14 +146,16 @@ def tab_audio_browser():
             outputs=[browser_table],
         )
 
-        def on_batch_download_selected(table_data):
-            zip_path = _batch_download(table_data, selected_only=True)
+        def on_batch_download_selected(table_data, request: gr.Request):
+            user = (request.username or "unknown") if request else "-"
+            zip_path = _batch_download(table_data, selected_only=True, user=user)
             if zip_path:
                 return gr.update(value=zip_path, visible=True)
             return gr.update(value=None, visible=False)
 
-        def on_batch_download_all(table_data):
-            zip_path = _batch_download(table_data, selected_only=False)
+        def on_batch_download_all(table_data, request: gr.Request):
+            user = (request.username or "unknown") if request else "-"
+            zip_path = _batch_download(table_data, selected_only=False, user=user)
             if zip_path:
                 return gr.update(value=zip_path, visible=True)
             return gr.update(value=None, visible=False)

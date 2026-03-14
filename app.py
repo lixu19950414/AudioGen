@@ -83,7 +83,7 @@ def build_app() -> gr.Blocks:
         def on_page_load(request: gr.Request):
             username = request.username or "unknown"
             client_ip = request.client.host if request.client else "unknown"
-            log_event(EVENT_LOGIN, f"用户={username} IP={client_ip}")
+            log_event(EVENT_LOGIN, f"用户={username} IP={client_ip}", user=username)
 
         demo.load(fn=on_page_load)
 
