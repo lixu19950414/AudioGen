@@ -9,3 +9,4 @@ characters.json
 design_characters.json
 .claude/settings.local.json
 logs/
+models/
