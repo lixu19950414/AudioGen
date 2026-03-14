@@ -32,6 +32,7 @@ from ui.tab_character_manager import tab_character_manager
 from ui.tab_batch import tab_batch
 from ui.tab_tools import tab_tools
 from ui.tab_audio_browser import tab_audio_browser
+from ui.tab_batch_download import tab_batch_download
 from core.app_logger import log_event, EVENT_LOGIN
 
 logging.basicConfig(
@@ -53,6 +54,7 @@ def build_app() -> gr.Blocks:
         tab_batch()
         tool_audio_out, tool_send_btn = tab_tools()
         browser_audio_out, browser_send_btn = tab_audio_browser()
+        tab_batch_download()
 
         # 跨 Tab 自动刷新：保存角色 → 刷新管理表格
         clone_save_btn.click(
