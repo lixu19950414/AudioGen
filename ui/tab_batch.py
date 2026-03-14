@@ -51,7 +51,7 @@ def tab_batch():
                 batch_btn = gr.Button("开始批量合成", variant="primary")
 
         batch_log = gr.Textbox(label="处理日志", lines=15, interactive=False, max_lines=30)
-        batch_download = gr.File(label="下载压缩包", interactive=False, visible=False)
+        batch_download = gr.File(label="下载压缩包", interactive=False)
 
         def download_template():
             path = _generate_template()
@@ -59,18 +59,18 @@ def tab_batch():
 
         def run_batch(file, fmt):
             if file is None:
-                return "请先上传文件", gr.update(visible=False)
+                return "请先上传文件", gr.update(value=None)
             try:
                 df = load_table(file.name)
             except Exception as e:
-                return f"文件读取失败：{e}", gr.update(visible=False)
+                return f"文件读取失败：{e}", gr.update(value=None)
 
             # 检查必要列
             missing = [c for c in ["character", "text"] if c not in df.columns]
             if missing:
                 return (
                     f"文件缺少必要列：{', '.join(missing)}。需要的列：character, text, filename（可选）",
-                    gr.update(visible=False),
+                    gr.update(value=None),
                 )
 
             chars = load_characters()
@@ -106,7 +106,7 @@ def tab_batch():
                 all_chars = sorted(set(list(chars.keys()) + list(design_chars.keys()) + PRESET_VOICES))
                 return (
                     "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors) + "\n\n可用角色：" + "、".join(all_chars),
-                    gr.update(visible=False),
+                    gr.update(value=None),
                 )
 
             # ---- 预检查通过，创建时间戳+文件名子目录，开始合成 ----
@@ -141,9 +141,9 @@ def tab_batch():
                         if f.is_file():
                             zf.write(f, f.name)
                 log_lines.append(f"\n压缩包已生成：{zip_path.name}")
-                return "\n".join(log_lines), gr.update(value=str(zip_path), visible=True)
+                return "\n".join(log_lines), gr.update(value=str(zip_path))
 
-            return "\n".join(log_lines), gr.update(visible=False)
+            return "\n".join(log_lines), gr.update(value=None)
 
         template_btn.click(fn=download_template, inputs=[], outputs=[template_file])
         batch_btn.click(
