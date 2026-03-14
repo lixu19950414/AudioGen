@@ -8,6 +8,11 @@ config.py
 import os
 from pathlib import Path
 
+# 将项目内的 ffmpeg 目录加入 PATH，确保音频转换可用
+_FFMPEG_DIR = str(Path(__file__).resolve().parent / "ffmpeg")
+if _FFMPEG_DIR not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _FFMPEG_DIR + os.pathsep + os.environ.get("PATH", "")
+
 # 模型缓存目录：项目根目录下的 models/（替代默认的 ~/.cache/huggingface/hub/）
 _MODELS_DIR = str(Path(__file__).resolve().parent / "models")
 os.environ["HF_HUB_CACHE"] = _MODELS_DIR
