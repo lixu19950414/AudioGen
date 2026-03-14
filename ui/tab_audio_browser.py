@@ -32,7 +32,7 @@ def _scan_audio_files(keyword: str = "", fmt_filter: str = "全部") -> list[lis
     rows = []
     for f in files:
         rel = f.relative_to(OUTPUT_DIR).as_posix()
-        rows.append([rel])
+        rows.append([False, rel])
     return rows
 
 
@@ -50,13 +50,20 @@ def _audio_detail(filepath: Path) -> str:
     )
 
 
-def _batch_download(table_data) -> Optional[str]:
-    """将当前列表中的音频文件打包为 ZIP 下载。"""
+def _batch_download(table_data, selected_only: bool = True) -> Optional[str]:
+    """将选中（或全部）音频文件打包为 ZIP 下载。"""
     if table_data is None or len(table_data) == 0:
         return None
     files = []
     for i in range(len(table_data)):
-        rel = table_data.iloc[i, 0] if hasattr(table_data, "iloc") else table_data[i][0]
+        if hasattr(table_data, "iloc"):
+            checked = table_data.iloc[i, 0]
+            rel = table_data.iloc[i, 1]
+        else:
+            checked = table_data[i][0]
+            rel = table_data[i][1]
+        if selected_only and not checked:
+            continue
         fp = OUTPUT_DIR / rel
         if fp.exists():
             files.append((fp, rel))
@@ -76,11 +83,12 @@ def tab_audio_browser():
         with gr.Row():
             with gr.Column(scale=1):
                 browser_table = gr.Dataframe(
-                    headers=["文件名"],
-                    datatype=["str"],
+                    headers=["选中", "文件名"],
+                    datatype=["bool", "str"],
                     label="音频文件列表",
-                    interactive=False,
+                    interactive=True,
                     value=_scan_audio_files(),
+                    column_widths=["60px", "auto"],
                 )
             with gr.Column(scale=1):
                 with gr.Row():
@@ -95,8 +103,13 @@ def tab_audio_browser():
                         label="格式",
                         scale=1,
                     )
-                refresh_btn = gr.Button("刷新列表")
-                batch_download_btn = gr.Button("批量下载（当前列表）")
+                with gr.Row():
+                    refresh_btn = gr.Button("刷新列表")
+                    select_all_btn = gr.Button("全选")
+                    deselect_all_btn = gr.Button("取消全选")
+                with gr.Row():
+                    batch_download_selected_btn = gr.Button("下载选中文件", variant="primary")
+                    batch_download_all_btn = gr.Button("下载全部")
                 batch_download_file = gr.File(label="下载 ZIP", visible=False)
                 browser_audio_out = gr.Audio(label="播放音频", type="filepath", interactive=False)
                 browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
@@ -106,16 +119,55 @@ def tab_audio_browser():
         filter_keyword.change(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
         filter_fmt.change(fn=_scan_audio_files, inputs=[filter_keyword, filter_fmt], outputs=[browser_table])
 
-        def on_batch_download(table_data):
-            zip_path = _batch_download(table_data)
+        def _toggle_all(table_data, checked: bool):
+            if table_data is None or len(table_data) == 0:
+                return table_data
+            rows = []
+            for i in range(len(table_data)):
+                if hasattr(table_data, "iloc"):
+                    rel = table_data.iloc[i, 1]
+                else:
+                    rel = table_data[i][1]
+                rows.append([checked, rel])
+            return rows
+
+        select_all_btn.click(
+            fn=lambda td: _toggle_all(td, True),
+            inputs=[browser_table],
+            outputs=[browser_table],
+        )
+        deselect_all_btn.click(
+            fn=lambda td: _toggle_all(td, False),
+            inputs=[browser_table],
+            outputs=[browser_table],
+        )
+
+        def on_batch_download_selected(table_data):
+            zip_path = _batch_download(table_data, selected_only=True)
             if zip_path:
-                count = len(table_data) if table_data is not None else 0
-                log_event(EVENT_DOWNLOAD, f"批量下载 文件数={count}")
+                count = sum(
+                    1 for i in range(len(table_data))
+                    if (table_data.iloc[i, 0] if hasattr(table_data, "iloc") else table_data[i][0])
+                )
+                log_event(EVENT_DOWNLOAD, f"下载选中文件 文件数={count}")
                 return gr.update(value=zip_path, visible=True)
             return gr.update(value=None, visible=False)
 
-        batch_download_btn.click(
-            fn=on_batch_download,
+        def on_batch_download_all(table_data):
+            zip_path = _batch_download(table_data, selected_only=False)
+            if zip_path:
+                count = len(table_data) if table_data is not None else 0
+                log_event(EVENT_DOWNLOAD, f"批量下载全部 文件数={count}")
+                return gr.update(value=zip_path, visible=True)
+            return gr.update(value=None, visible=False)
+
+        batch_download_selected_btn.click(
+            fn=on_batch_download_selected,
+            inputs=[browser_table],
+            outputs=[batch_download_file],
+        )
+        batch_download_all_btn.click(
+            fn=on_batch_download_all,
             inputs=[browser_table],
             outputs=[batch_download_file],
         )
@@ -124,7 +176,7 @@ def tab_audio_browser():
             row_idx = evt.index[0]
             if row_idx < 0 or row_idx >= len(table_data):
                 return None, ""
-            filename = table_data.iloc[row_idx, 0]
+            filename = table_data.iloc[row_idx, 1] if hasattr(table_data, "iloc") else table_data[row_idx][1]
             filepath = OUTPUT_DIR / filename
             if filepath.exists():
                 return str(filepath), _audio_detail(filepath)
