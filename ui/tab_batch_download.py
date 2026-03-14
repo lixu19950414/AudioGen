@@ -30,7 +30,7 @@ def _scan_zip_files() -> list[list]:
 
 
 def tab_batch_download():
-    with gr.Tab("批量处理下载"):
+    with gr.Tab("批量处理下载") as batch_download_tab:
         gr.Markdown("### 下载批量处理生成的 ZIP 文件")
 
         batch_table = gr.Dataframe(
@@ -47,6 +47,7 @@ def tab_batch_download():
         download_file = gr.File(label="下载文件")
 
         refresh_btn.click(fn=_scan_zip_files, inputs=[], outputs=[batch_table])
+        batch_download_tab.select(fn=_scan_zip_files, inputs=[], outputs=[batch_table])
 
         def on_select_download(evt: gr.SelectData, table_data, request: gr.Request):
             row_idx = evt.index[0]

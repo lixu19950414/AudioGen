@@ -75,7 +75,7 @@ def _batch_download(table_data, selected_only: bool = True, user: str = "-") -> 
 
 
 def tab_audio_browser():
-    with gr.Tab("音频浏览"):
+    with gr.Tab("音频浏览") as audio_browser_tab:
         gr.Markdown("### 浏览已生成的音频文件")
         with gr.Row():
             with gr.Column(scale=2):
@@ -99,6 +99,7 @@ def tab_audio_browser():
                 batch_download_file = gr.File(label="下载 ZIP")
 
         refresh_btn.click(fn=_scan_audio_files, inputs=[], outputs=[browser_table])
+        audio_browser_tab.select(fn=_scan_audio_files, inputs=[], outputs=[browser_table])
 
         def on_batch_download_selected(table_data, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
