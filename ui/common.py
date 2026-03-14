@@ -12,6 +12,7 @@ import numpy as np
 import gradio as gr
 
 from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
+from core.asr_engine import ASREngine
 from core.batch_processor import BatchProcessor
 from core.tts_engine import TTSEngine
 from core.task_queue import TaskQueue
@@ -39,6 +40,7 @@ for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR, BATCH_OUTPUT_DIR):
 # 全局引擎（单例）
 # ---------------------------------------------------------------------------
 engine = TTSEngine()
+asr_engine = ASREngine()
 batch_processor = BatchProcessor(engine)
 task_queue = TaskQueue()
 

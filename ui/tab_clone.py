@@ -13,6 +13,8 @@ from ui.common import (
     load_characters,
     save_characters,
     synth_to_file,
+    asr_engine,
+    task_queue,
 )
 from core.app_logger import log_event, EVENT_CHAR_ADD
 
@@ -47,6 +49,7 @@ def tab_clone():
                     label="参考音频对应文字（可选）",
                     placeholder="例：好的，没问题。",
                 )
+                recognize_btn = gr.Button("识别文字", variant="secondary")
                 clone_text_in = gr.Textbox(
                     label="待合成文本",
                     placeholder="请输入要用克隆音色朗读的文字…",
@@ -83,6 +86,27 @@ def tab_clone():
             fn=on_char_select,
             inputs=[clone_char_dd],
             outputs=[ref_audio_in, ref_text_in],
+        )
+
+        def on_recognize(ref_audio, request: gr.Request):
+            """使用 Whisper 识别参考音频中的文字。"""
+            if ref_audio is None:
+                return gr.update(), "请先上传参考音频"
+            user = (request.username or "unknown") if request else "-"
+            try:
+                def do_recognize():
+                    return asr_engine.recognize(ref_audio)
+
+                text = task_queue.submit(user, "asr", f"语音识别: {Path(ref_audio).name}", do_recognize)
+                return gr.update(value=text), f"识别完成：{text[:50]}..."
+            except Exception as e:
+                return gr.update(), f"识别失败：{e}"
+
+        recognize_btn.click(
+            fn=on_recognize,
+            inputs=[ref_audio_in],
+            outputs=[ref_text_in, clone_status],
+            concurrency_limit=10,
         )
 
         def on_clone(char_sel, ref_audio, ref_t, text, fmt, request: gr.Request):
