@@ -14,16 +14,13 @@ from ui.common import OUTPUT_DIR
 from core.app_logger import log_event, EVENT_DOWNLOAD
 
 
-def _scan_audio_files(keyword: str = "") -> list[list]:
+def _scan_audio_files() -> list[list]:
     """递归扫描 OUTPUT_DIR 下的 .wav/.mp3 文件，按修改时间倒序返回表格行。"""
     exts = (".wav", ".mp3")
     files = [
         f for f in OUTPUT_DIR.rglob("*")
         if f.is_file() and f.suffix.lower() in exts
     ]
-    if keyword and keyword.strip():
-        kw = keyword.strip().lower()
-        files = [f for f in files if kw in f.name.lower()]
     files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
     rows = []
     for f in files:
@@ -81,7 +78,7 @@ def tab_audio_browser():
     with gr.Tab("音频浏览"):
         gr.Markdown("### 浏览已生成的音频文件")
         with gr.Row():
-            with gr.Column(scale=1):
+            with gr.Column(scale=2):
                 browser_table = gr.Dataframe(
                     headers=["选中", "文件名"],
                     datatype=["bool", "str"],
@@ -92,14 +89,7 @@ def tab_audio_browser():
                 )
             with gr.Column(scale=1):
                 with gr.Row():
-                    filter_keyword = gr.Textbox(
-                        label="文件名搜索",
-                        placeholder="输入关键词过滤…",
-                    )
-                with gr.Row():
                     refresh_btn = gr.Button("刷新列表")
-                    select_all_btn = gr.Button("全选")
-                    deselect_all_btn = gr.Button("取消全选")
                 with gr.Row():
                     batch_download_selected_btn = gr.Button("下载选中文件", variant="primary")
                     batch_download_all_btn = gr.Button("下载全部")
@@ -108,31 +98,7 @@ def tab_audio_browser():
                 browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
                 browser_detail = gr.Textbox(label="音频详情", interactive=False, lines=4)
 
-        refresh_btn.click(fn=_scan_audio_files, inputs=[filter_keyword], outputs=[browser_table])
-        filter_keyword.change(fn=_scan_audio_files, inputs=[filter_keyword], outputs=[browser_table])
-
-        def _toggle_all(table_data, checked: bool):
-            if table_data is None or len(table_data) == 0:
-                return table_data
-            rows = []
-            for i in range(len(table_data)):
-                if hasattr(table_data, "iloc"):
-                    rel = table_data.iloc[i, 1]
-                else:
-                    rel = table_data[i][1]
-                rows.append([checked, rel])
-            return rows
-
-        select_all_btn.click(
-            fn=lambda td: _toggle_all(td, True),
-            inputs=[browser_table],
-            outputs=[browser_table],
-        )
-        deselect_all_btn.click(
-            fn=lambda td: _toggle_all(td, False),
-            inputs=[browser_table],
-            outputs=[browser_table],
-        )
+        refresh_btn.click(fn=_scan_audio_files, inputs=[], outputs=[browser_table])
 
         def on_batch_download_selected(table_data, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
