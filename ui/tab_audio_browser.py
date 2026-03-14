@@ -69,6 +69,10 @@ def _batch_download(table_data, selected_only: bool = True) -> Optional[str]:
             files.append((fp, rel))
     if not files:
         return None
+    # 记录下载日志（所有文件名放在一条日志中）
+    mode = "选中" if selected_only else "全部"
+    names = ", ".join(rel for _, rel in files)
+    log_event(EVENT_DOWNLOAD, f"下载文件({mode}) 文件数={len(files)} [{names}]")
     tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False, dir=str(OUTPUT_DIR))
     tmp.close()
     with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -145,19 +149,12 @@ def tab_audio_browser():
         def on_batch_download_selected(table_data):
             zip_path = _batch_download(table_data, selected_only=True)
             if zip_path:
-                count = sum(
-                    1 for i in range(len(table_data))
-                    if (table_data.iloc[i, 0] if hasattr(table_data, "iloc") else table_data[i][0])
-                )
-                log_event(EVENT_DOWNLOAD, f"下载选中文件 文件数={count}")
                 return gr.update(value=zip_path, visible=True)
             return gr.update(value=None, visible=False)
 
         def on_batch_download_all(table_data):
             zip_path = _batch_download(table_data, selected_only=False)
             if zip_path:
-                count = len(table_data) if table_data is not None else 0
-                log_event(EVENT_DOWNLOAD, f"批量下载全部 文件数={count}")
                 return gr.update(value=zip_path, visible=True)
             return gr.update(value=None, visible=False)
 
