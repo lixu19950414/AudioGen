@@ -10,6 +10,7 @@ import pandas as pd
 
 from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
+from core.tts_engine import PRESET_VOICES
 from ui.common import (
     OUTPUT_DIR,
     batch_processor,
@@ -69,6 +70,38 @@ def tab_batch():
 
             chars = load_characters()
             design_chars = load_design_characters()
+
+            # ---- 预检查：格式与角色可用性 ----
+            errors: list[str] = []
+            empty_text_rows: list[int] = []
+            empty_char_rows: list[int] = []
+            invalid_chars: dict[str, list[int]] = {}  # 角色名 → 出现行号
+
+            for idx, row in df.iterrows():
+                row_num = int(idx) + 1
+                text = str(row.get("text", "")).strip()
+                char_name = str(row.get("character", "")).strip()
+
+                if not text:
+                    empty_text_rows.append(row_num)
+                if not char_name:
+                    empty_char_rows.append(row_num)
+                elif char_name not in chars and char_name not in design_chars and char_name not in PRESET_VOICES:
+                    invalid_chars.setdefault(char_name, []).append(row_num)
+
+            if empty_text_rows:
+                errors.append(f"以下行文本为空：第 {', '.join(map(str, empty_text_rows))} 行")
+            if empty_char_rows:
+                errors.append(f"以下行角色为空：第 {', '.join(map(str, empty_char_rows))} 行")
+            if invalid_chars:
+                for name, rows in invalid_chars.items():
+                    errors.append(f"角色「{name}」不存在（第 {', '.join(map(str, rows))} 行）")
+
+            if errors:
+                all_chars = sorted(set(list(chars.keys()) + list(design_chars.keys()) + PRESET_VOICES))
+                return "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors) + "\n\n可用角色：" + "、".join(all_chars)
+
+            # ---- 预检查通过，开始合成 ----
             log_lines: list[str] = []
 
             def progress_cb(cur, total, msg):
