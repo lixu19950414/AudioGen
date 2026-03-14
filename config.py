@@ -21,4 +21,5 @@ os.environ["HF_HUB_DISABLE_XET"] = "1"
 # Gradio 登录账号列表 [(用户名, 密码), ...]
 AUTH_USERS = [
     ("admin", "123456"),
+    ("admin2", "123456"),
 ]
