@@ -17,6 +17,9 @@ if _FFMPEG_DIR not in os.environ.get("PATH", ""):
 _MODELS_DIR = str(Path(__file__).resolve().parent / "models")
 os.environ["HF_HUB_CACHE"] = _MODELS_DIR
 
+# Demucs 等 torch.hub 模型也缓存到 models/ 目录
+os.environ.setdefault("TORCH_HOME", _MODELS_DIR)
+
 # 强制使用 HTTP 镜像下载模型权重（优先读取环境变量，未设置则使用 hf-mirror.com）
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
