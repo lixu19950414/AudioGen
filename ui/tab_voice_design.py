@@ -94,6 +94,7 @@ def tab_voice_design():
             fn=on_voice_design,
             inputs=[design_instruct, design_text, design_fmt],
             outputs=[design_audio_out, design_status],
+            concurrency_limit=10,
         )
 
         def on_save_design_char(instruct, char_name, char_desc, request: gr.Request):

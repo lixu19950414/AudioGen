@@ -161,4 +161,5 @@ def tab_batch():
             fn=run_batch,
             inputs=[file_upload, batch_fmt],
             outputs=[batch_log, batch_download],
+            concurrency_limit=10,
         )
