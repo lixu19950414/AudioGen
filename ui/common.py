@@ -25,12 +25,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 REF_AUDIO_DIR = DATA_DIR / "reference_audio"
 OUTPUT_DIR = BASE_DIR / "output"
+BATCH_OUTPUT_DIR = BASE_DIR / "output_batch"
 CHARACTERS_FILE = DATA_DIR / "characters.json"
 DESIGN_CHARACTERS_FILE = DATA_DIR / "design_characters.json"
 
 FFMPEG_BIN = BASE_DIR / "ffmpeg" / "ffmpeg.exe"
 
-for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR):
+for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR, BATCH_OUTPUT_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------

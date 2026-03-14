@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import datetime
 import tempfile
+import zipfile
 from pathlib import Path
 
 import gradio as gr
@@ -12,7 +14,7 @@ from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
 from core.tts_engine import PRESET_VOICES
 from ui.common import (
-    OUTPUT_DIR,
+    BATCH_OUTPUT_DIR,
     batch_processor,
     load_characters,
     load_design_characters,
@@ -45,28 +47,31 @@ def tab_batch():
                     file_types=[".csv", ".xlsx", ".xls"],
                 )
             with gr.Column():
-                out_dir_in = gr.Textbox(label="输出目录", value=str(OUTPUT_DIR))
                 batch_fmt = gr.Radio(choices=["WAV", "MP3"], value="WAV", label="输出格式")
                 batch_btn = gr.Button("开始批量合成", variant="primary")
 
         batch_log = gr.Textbox(label="处理日志", lines=15, interactive=False, max_lines=30)
+        batch_download = gr.File(label="下载压缩包", interactive=False, visible=False)
 
         def download_template():
             path = _generate_template()
             return gr.update(value=path, visible=True)
 
-        def run_batch(file, out_dir, fmt):
+        def run_batch(file, fmt):
             if file is None:
-                return "请先上传文件"
+                return "请先上传文件", gr.update(visible=False)
             try:
                 df = load_table(file.name)
             except Exception as e:
-                return f"文件读取失败：{e}"
+                return f"文件读取失败：{e}", gr.update(visible=False)
 
             # 检查必要列
             missing = [c for c in ["character", "text"] if c not in df.columns]
             if missing:
-                return f"文件缺少必要列：{', '.join(missing)}。需要的列：character, text, filename（可选）"
+                return (
+                    f"文件缺少必要列：{', '.join(missing)}。需要的列：character, text, filename（可选）",
+                    gr.update(visible=False),
+                )
 
             chars = load_characters()
             design_chars = load_design_characters()
@@ -99,9 +104,19 @@ def tab_batch():
 
             if errors:
                 all_chars = sorted(set(list(chars.keys()) + list(design_chars.keys()) + PRESET_VOICES))
-                return "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors) + "\n\n可用角色：" + "、".join(all_chars)
+                return (
+                    "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors) + "\n\n可用角色：" + "、".join(all_chars),
+                    gr.update(visible=False),
+                )
 
-            # ---- 预检查通过，开始合成 ----
+            # ---- 预检查通过，创建时间戳+文件名子目录，开始合成 ----
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_stem = Path(file.orig_name).stem if hasattr(file, "orig_name") else Path(file.name).stem
+            safe_stem = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in file_stem)
+            folder_name = f"{timestamp}_{safe_stem}"
+            out_dir = BATCH_OUTPUT_DIR / folder_name
+            out_dir.mkdir(parents=True, exist_ok=True)
+
             log_lines: list[str] = []
 
             def progress_cb(cur, total, msg):
@@ -110,18 +125,29 @@ def tab_batch():
             out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
             result = batch_processor.run(
                 df=df,
-                output_dir=out_dir or str(OUTPUT_DIR),
+                output_dir=str(out_dir),
                 output_format=out_fmt,
                 characters=chars,
                 design_characters=design_chars,
                 progress_cb=progress_cb,
             )
             log_lines.append(result.summary())
-            return "\n".join(log_lines)
+
+            # ---- 压缩输出目录 ----
+            if result.success > 0:
+                zip_path = BATCH_OUTPUT_DIR / f"{folder_name}.zip"
+                with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
+                    for f in out_dir.iterdir():
+                        if f.is_file():
+                            zf.write(f, f.name)
+                log_lines.append(f"\n压缩包已生成：{zip_path.name}")
+                return "\n".join(log_lines), gr.update(value=str(zip_path), visible=True)
+
+            return "\n".join(log_lines), gr.update(visible=False)
 
         template_btn.click(fn=download_template, inputs=[], outputs=[template_file])
         batch_btn.click(
             fn=run_batch,
-            inputs=[file_upload, out_dir_in, batch_fmt],
-            outputs=[batch_log],
+            inputs=[file_upload, batch_fmt],
+            outputs=[batch_log, batch_download],
         )
