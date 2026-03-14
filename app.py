@@ -16,6 +16,7 @@ import config  # noqa: F401  确保 HF 环境变量尽早生效
 from config import AUTH_USERS
 
 import logging
+import time
 
 import gradio as gr
 
@@ -24,6 +25,7 @@ from ui.common import (
     design_character_display_rows,
     load_characters,
     load_design_characters,
+    task_queue,
 )
 from ui.tab_single_synth import tab_single_synth
 from ui.tab_voice_design import tab_voice_design
@@ -47,6 +49,12 @@ def build_app() -> gr.Blocks:
         gr.Markdown(
             "# AudioGen — 游戏语音合成工具\n"
         )
+
+        # ---- 任务队列状态面板 ----
+        with gr.Accordion("任务队列状态", open=True):
+            queue_status_md = gr.Markdown("当前无任务")
+            queue_timer = gr.Timer(1)
+
         synth_audio_out, synth_send_btn = tab_single_synth()
         design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
         clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
@@ -88,6 +96,28 @@ def build_app() -> gr.Blocks:
             log_event(EVENT_LOGIN, f"用户={username} IP={client_ip}", user=username)
 
         demo.load(fn=on_page_load)
+
+        # ---- 任务队列状态轮询 ----
+        def refresh_queue_status():
+            status = task_queue.get_status()
+            lines = []
+            current = status["current"]
+            if current:
+                elapsed = time.time() - (current.started_at or current.submitted_at)
+                lines.append(f"**正在执行**: {current.description}　"
+                             f"(用户: {current.username}, 已运行 {elapsed:.0f}s)")
+            else:
+                lines.append("**当前空闲**")
+            waiting = status["waiting"]
+            if waiting:
+                lines.append(f"\n**等待队列** ({len(waiting)} 个任务):")
+                for i, entry in enumerate(waiting, 1):
+                    wait_time = time.time() - entry.submitted_at
+                    lines.append(f"{i}. {entry.description} "
+                                 f"(用户: {entry.username}, 等待 {wait_time:.0f}s)")
+            return "\n".join(lines)
+
+        queue_timer.tick(fn=refresh_queue_status, outputs=[queue_status_md])
 
     return demo
 

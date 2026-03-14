@@ -17,6 +17,7 @@ from core.app_logger import log_event, EVENT_BATCH
 from ui.common import (
     BATCH_OUTPUT_DIR,
     batch_processor,
+    task_queue,
     load_characters,
     load_design_characters,
 )
@@ -127,14 +128,19 @@ def tab_batch():
                 log_lines.append(msg)
 
             out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
-            result = batch_processor.run(
-                df=df,
-                output_dir=str(out_dir),
-                output_format=out_fmt,
-                characters=chars,
-                design_characters=design_chars,
-                progress_cb=progress_cb,
-            )
+            task_desc = f"批量合成: {file_stem} ({len(df)} 条)"
+
+            def do_batch():
+                return batch_processor.run(
+                    df=df,
+                    output_dir=str(out_dir),
+                    output_format=out_fmt,
+                    characters=chars,
+                    design_characters=design_chars,
+                    progress_cb=progress_cb,
+                )
+
+            result = task_queue.submit(user, "batch", task_desc, do_batch)
             log_lines.append(result.summary())
             log_event(EVENT_BATCH, f"完成 文件={file_stem} 成功={result.success} 失败={result.failed} 总数={result.total}", user=user)
 

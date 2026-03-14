@@ -14,6 +14,7 @@ import gradio as gr
 from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
 from core.batch_processor import BatchProcessor
 from core.tts_engine import TTSEngine
+from core.task_queue import TaskQueue
 from core.app_logger import log_event, EVENT_SYNTHESIZE
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR, BATCH_OUTPUT_DIR):
 # ---------------------------------------------------------------------------
 engine = TTSEngine()
 batch_processor = BatchProcessor(engine)
+task_queue = TaskQueue()
 
 
 # ---------------------------------------------------------------------------
@@ -118,12 +120,18 @@ def synth_to_file(
     """通用合成 → (audio_path | None, status)"""
     user = (request.username or "unknown") if request else "-"
     try:
-        audio, sr = engine.synthesize(
-            text=text,
-            voice_name=voice_name,
-            ref_audio=ref_audio,
-            ref_text=ref_text,
-        )
+        task_type = "clone" if ref_audio is not None else "preset"
+        task_desc = f"{'克隆' if ref_audio is not None else '预设'}合成: {text[:30]}"
+
+        def do_synth():
+            return engine.synthesize(
+                text=text,
+                voice_name=voice_name,
+                ref_audio=ref_audio,
+                ref_text=ref_text,
+            )
+
+        audio, sr = task_queue.submit(user, task_type, task_desc, do_synth)
         audio = normalize_audio(audio)
         out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
         path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint)

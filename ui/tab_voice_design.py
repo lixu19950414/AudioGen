@@ -11,6 +11,7 @@ from core.audio_utils import normalize_audio
 from ui.common import (
     BASE_DIR,
     engine,
+    task_queue,
     load_design_characters,
     save_design_characters,
     to_gradio_audio,
@@ -74,7 +75,12 @@ def tab_voice_design():
                 return None, "待合成文本不能为空"
             user = (request.username or "unknown") if request else "-"
             try:
-                audio, sr = engine.voice_design(text=text, instruct=instruct)
+                task_desc = f"音色设计: {text[:30]}"
+
+                def do_design():
+                    return engine.voice_design(text=text, instruct=instruct)
+
+                audio, sr = task_queue.submit(user, "design", task_desc, do_design)
                 audio = normalize_audio(audio)
                 out_fmt: AudioFormat = "mp3" if fmt == "MP3" else "wav"
                 path = to_gradio_audio(audio_to_bytes(audio, sr, out_fmt), out_fmt, name_hint="design")
