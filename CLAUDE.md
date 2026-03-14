@@ -21,7 +21,9 @@ python app.py                      # 启动，访问 http://localhost:7860
 
 ```
 Gradio UI (app.py)
-    └── TTSEngine (core/tts_engine.py)      ← 单例，延迟加载
+    └── ui/common.py                         ← 全局 engine/batch_processor 单例、路径常量、角色数据函数、synth_to_file
+    └── ui/tab_*.py                          ← 每个 Tab 一个文件
+    └── TTSEngine (core/tts_engine.py)       ← 单例，延迟加载
             └── CustomVoice 模型（三种合成模式）
                   ├── generate_custom_voice   预设音色（_preset）
                   ├── generate_voice_clone    参考克隆（_clone）
@@ -30,14 +32,15 @@ Gradio UI (app.py)
             └── 调用 TTSEngine.synthesize()，逐行合成
     └── audio_utils (core/audio_utils.py)
             └── numpy array → WAV/MP3 bytes
-    └── config.py                            ← HF 环境变量，最早导入
+    └── app_logger (core/app_logger.py)      ← 业务事件日志，按天轮转写入 logs/
+    └── config.py                            ← HF 环境变量 + AUTH_USERS，最早导入
 ```
 
 ### 模型
 
 只使用 **一个**模型：`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`，通过 `TTSEngine._get_model()` 延迟加载。
 
-- `config.py` 设置 `HF_ENDPOINT`（默认 `http://hf-mirror.com`）和 `HF_HUB_DISABLE_XET`，必须在其他模块之前导入。
+- `config.py` 设置 `HF_ENDPOINT`（默认 `http://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），必须在其他模块之前导入。
 - 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
 - `qwen_tts.Qwen3TTSModel` 的方法返回 `(List[np.ndarray], int)`，取 `[0]` 得到单条音频。
 
@@ -52,7 +55,7 @@ Gradio UI (app.py)
 
 ### Gradio UI（app.py）
 
-共 6 个 Tab，`build_app()` 中依次调用：
+共 7 个 Tab，`build_app()` 中依次调用：
 
 | 函数 | Tab | 返回值 |
 |------|-----|--------|
@@ -62,12 +65,13 @@ Gradio UI (app.py)
 | `tab_character_manager()` | 角色管理 | `(char_table, design_table, delete_clone_btn, delete_design_btn)` |
 | `tab_batch()` | 批量处理 | 无 |
 | `tab_tools()` | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)` |
+| `tab_audio_browser()` | 音频浏览 | `(browser_audio_out, browser_send_to_clone_btn)` |
 
 各 Tab 函数返回需要跨 Tab 交互的组件，在 `build_app()` 中统一连接事件。
 
 ### 跨 Tab 交互
 
-- **发送到模仿音频设计**：预设音色合成、自定义音色设计、工具提取音频下方各有按钮，点击后将音频传到模仿音频设计 Tab 的 `ref_audio_in`
+- **发送到模仿音频设计**：预设音色合成、自定义音色设计、工具提取音频、音频浏览下方各有按钮，点击后将音频传到模仿音频设计 Tab 的 `ref_audio_in`
 - **保存角色 → 刷新管理表格**：模仿音频设计/自定义音色设计 Tab 保存后自动刷新角色管理表格
 - **删除角色 → 刷新下拉**：角色管理删除后自动刷新合成 Tab 下拉列表
 - 所有音频输出组件设为 `interactive=False`，仅播放不可上传
@@ -110,6 +114,12 @@ Gradio UI (app.py)
 ## 批量处理 CSV 格式
 
 默认列名：`text`（必填）、`character`（可选）、`filename`（可选）。列名可在 UI 中自定义。`character` 列的值需与 `characters.json` 中的角色名完全匹配。输出文件名：有 `filename` 列时用其值，否则按行号 `0001.wav` 命名。
+
+## 输出目录
+
+- `output/` — 单条合成音频，按日期子目录 `output/YYYY-MM-DD/` 存放
+- `output_batch/` — 批量合成输出
+- `logs/` — 业务事件日志（`app.log`），按天轮转，保留 90 天
 
 ## Commit 风格
 
