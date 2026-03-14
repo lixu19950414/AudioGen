@@ -85,7 +85,7 @@ def tab_audio_browser():
                     label="音频文件列表",
                     interactive=True,
                     value=_scan_audio_files(),
-                    column_widths=["60px", "auto"],
+                    column_widths=["80px", "auto"],
                 )
             with gr.Column(scale=1):
                 with gr.Row():
