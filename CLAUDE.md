@@ -13,7 +13,7 @@ pip install -r requirements.txt   # 首次安装依赖
 python app.py                      # 启动，访问 http://localhost:7860
 ```
 
-> MP3 输出依赖系统安装的 `ffmpeg`（需在 PATH 中）。模型权重首次运行时从 HuggingFace 自动下载，缓存在项目根目录 `models/`（通过 `HF_HUB_CACHE` 环境变量设置）。Windows 下启动时会出现 SoX 找不到的警告，可忽略，不影响功能。
+> 项目自带 `ffmpeg/` 目录，`config.py` 启动时自动将其加入 PATH，无需额外安装。模型权重首次运行时从 HuggingFace 自动下载，缓存在项目根目录 `models/`（通过 `HF_HUB_CACHE` 环境变量设置）。Windows 下启动时会出现 SoX 找不到的警告，可忽略，不影响功能。
 
 ## 架构
 
@@ -29,21 +29,26 @@ Gradio UI (app.py)
                   ├── generate_custom_voice   预设音色（_preset）
                   ├── generate_voice_clone    参考克隆（_clone）
                   └── voice_design            音色设计（自然语言描述）
+    └── ASREngine (core/asr_engine.py)       ← Whisper 语音识别，延迟加载，用于参考音频文字识别
     └── BatchProcessor (core/batch_processor.py)
             └── 调用 TTSEngine.synthesize()，逐行合成
     └── audio_utils (core/audio_utils.py)
             └── numpy array → WAV/MP3 bytes
     └── app_logger (core/app_logger.py)      ← 业务事件日志，按天轮转写入 logs/
-    └── config.py                            ← HF 环境变量 + AUTH_USERS + 模型缓存目录，最早导入
+    └── config.py                            ← ffmpeg PATH + HF 环境变量 + AUTH_USERS + 模型缓存目录，最早导入
 ```
 
 ### 模型
 
 只使用 **一个**模型：`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`，通过 `TTSEngine._get_model()` 延迟加载。
 
-- `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），必须在其他模块之前导入。
+- `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH。必须在其他模块之前导入。
 - 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
 - `qwen_tts.Qwen3TTSModel` 的方法返回 `(List[np.ndarray], int)`，取 `[0]` 得到单条音频。
+
+### 语音识别（core/asr_engine.py）
+
+`ASREngine` 使用 `openai/whisper-large-v3` 模型进行语音识别，用于识别参考音频的文字内容。延迟加载，CUDA 使用 `float16`，CPU 使用 `float32`。提供 `unload()` 方法释放显存（与 TTS 模型共享 GPU 资源时需手动卸载）。
 
 ### 合成路由（TTSEngine.synthesize）
 
