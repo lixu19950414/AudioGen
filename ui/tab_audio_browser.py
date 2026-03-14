@@ -88,31 +88,27 @@ def tab_audio_browser():
                     column_widths=["80px", "auto"],
                 )
             with gr.Column(scale=1):
+                browser_audio_out = gr.Audio(label="播放音频", type="filepath", interactive=False)
+                browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                browser_detail = gr.Textbox(label="音频详情", interactive=False, lines=4)
                 with gr.Row():
                     refresh_btn = gr.Button("刷新列表")
                 with gr.Row():
                     batch_download_selected_btn = gr.Button("下载选中文件", variant="primary")
                     batch_download_all_btn = gr.Button("下载全部")
-                batch_download_file = gr.File(label="下载 ZIP", visible=False)
-                browser_audio_out = gr.Audio(label="播放音频", type="filepath", interactive=False)
-                browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
-                browser_detail = gr.Textbox(label="音频详情", interactive=False, lines=4)
+                batch_download_file = gr.File(label="下载 ZIP")
 
         refresh_btn.click(fn=_scan_audio_files, inputs=[], outputs=[browser_table])
 
         def on_batch_download_selected(table_data, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
             zip_path = _batch_download(table_data, selected_only=True, user=user)
-            if zip_path:
-                return gr.update(value=zip_path, visible=True)
-            return gr.update(value=None, visible=False)
+            return zip_path
 
         def on_batch_download_all(table_data, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
             zip_path = _batch_download(table_data, selected_only=False, user=user)
-            if zip_path:
-                return gr.update(value=zip_path, visible=True)
-            return gr.update(value=None, visible=False)
+            return zip_path
 
         batch_download_selected_btn.click(
             fn=on_batch_download_selected,
