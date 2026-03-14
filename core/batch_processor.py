@@ -15,7 +15,7 @@ from typing import Callable, Optional
 import pandas as pd
 
 from core.audio_utils import AudioFormat, normalize_audio, save_audio
-from core.tts_engine import TTSEngine
+from core.tts_engine import PRESET_VOICES, TTSEngine
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +103,10 @@ class BatchProcessor:
             stem = fname if fname else f"{row_num:04d}"
             out_path = output_dir / f"{stem}.{output_format}"
 
-            # 查找角色配置
+            # 查找角色配置：克隆角色 → 设计角色 → 预设音色
             cfg = characters.get(char_name) or design_characters.get(char_name)
+            if not cfg and char_name in PRESET_VOICES:
+                cfg = {"voice_type": "preset", "voice_name": char_name}
             if not cfg:
                 msg = f"第 {row_num} 行：角色「{char_name}」不存在，跳过"
                 logger.warning(msg)
