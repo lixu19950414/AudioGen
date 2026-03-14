@@ -13,6 +13,7 @@ import pandas as pd
 from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
 from core.tts_engine import PRESET_VOICES
+from core.app_logger import log_event, EVENT_BATCH
 from ui.common import (
     BATCH_OUTPUT_DIR,
     batch_processor,
@@ -57,7 +58,8 @@ def tab_batch():
             path = _generate_template()
             return gr.update(value=path, visible=True)
 
-        def run_batch(file, fmt):
+        def run_batch(file, fmt, request: gr.Request):
+            user = (request.username or "unknown") if request else "-"
             if file is None:
                 return "请先上传文件", gr.update(value=None)
             try:
@@ -117,6 +119,8 @@ def tab_batch():
             out_dir = BATCH_OUTPUT_DIR / folder_name
             out_dir.mkdir(parents=True, exist_ok=True)
 
+            log_event(EVENT_BATCH, f"开始 文件={file_stem} 总数={len(df)} 格式={fmt}", user=user)
+
             log_lines: list[str] = []
 
             def progress_cb(cur, total, msg):
@@ -132,6 +136,7 @@ def tab_batch():
                 progress_cb=progress_cb,
             )
             log_lines.append(result.summary())
+            log_event(EVENT_BATCH, f"完成 文件={file_stem} 成功={result.success} 失败={result.failed} 总数={result.total}", user=user)
 
             # ---- 压缩输出目录 ----
             if result.success > 0:
