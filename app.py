@@ -90,13 +90,23 @@ def build_app() -> gr.Blocks:
         sep_send_btn.click(fn=lambda a: a, inputs=[sep_vocals_out], outputs=[ref_audio_in])
         browser_send_btn.click(fn=lambda a: a, inputs=[browser_audio_out], outputs=[ref_audio_in])
 
-        # 页面加载时记录登录日志
+        # 页面加载时记录登录日志 + 刷新角色下拉菜单
         def on_page_load(request: gr.Request):
             username = request.username or "unknown"
             client_ip = request.client.host if request.client else "unknown"
             log_event(EVENT_LOGIN, f"用户={username} IP={client_ip}", user=username)
+            clone_chars = load_characters()
+            clone_choices = ["（不使用角色）"] + [
+                name for name, cfg in clone_chars.items()
+                if cfg.get("voice_type") == "clone"
+            ]
+            design_choices = ["（不使用角色）"] + list(load_design_characters().keys())
+            return gr.update(choices=clone_choices), gr.update(choices=design_choices)
 
-        demo.load(fn=on_page_load)
+        demo.load(
+            fn=on_page_load,
+            outputs=[clone_char_dd, design_char_dd],
+        )
 
         # ---- 任务队列状态轮询 ----
         def refresh_queue_status():
