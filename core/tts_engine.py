@@ -72,6 +72,12 @@ class TTSEngine:
         if self._voice_design_model is not None:
             self._voice_design_model = None
             unloaded.append("VoiceDesign")
+        # 卸载 SFX 引擎释放显存
+        try:
+            from ui.common import sfx_engine
+            sfx_engine.unload()
+        except ImportError:
+            pass
         if unloaded and torch.cuda.is_available():
             torch.cuda.empty_cache()
         if unloaded:

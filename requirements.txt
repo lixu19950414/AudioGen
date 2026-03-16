@@ -9,3 +9,6 @@ pandas
 openpyxl
 numpy
 demucs
+diffusers>=0.30.0
+torchsde
+

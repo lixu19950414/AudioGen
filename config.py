@@ -21,7 +21,7 @@ os.environ["HF_HUB_CACHE"] = _MODELS_DIR
 os.environ.setdefault("TORCH_HOME", _MODELS_DIR)
 
 # 强制使用 HTTP 镜像下载模型权重（优先读取环境变量，未设置则使用 hf-mirror.com）
-os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+# os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 # 禁用 hf_xet 下载协议，避免兼容性问题
 os.environ["HF_HUB_DISABLE_XET"] = "1"

@@ -15,6 +15,7 @@ from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
 from core.asr_engine import ASREngine
 from core.batch_processor import BatchProcessor
 from core.tts_engine import TTSEngine
+from core.sfx_engine import SFXEngine
 from core.task_queue import TaskQueue
 from core.app_logger import log_event, EVENT_SYNTHESIZE
 
@@ -41,6 +42,7 @@ for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR, BATCH_OUTPUT_DIR):
 # ---------------------------------------------------------------------------
 engine = TTSEngine()
 asr_engine = ASREngine()
+sfx_engine = SFXEngine()
 batch_processor = BatchProcessor(engine)
 task_queue = TaskQueue()
 
