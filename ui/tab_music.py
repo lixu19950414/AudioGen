@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import tempfile
 from pathlib import Path
 
@@ -38,25 +37,37 @@ REPAINT_MODES = ["balanced", "creative", "precise"]
 
 
 def _save_music_output(result, name_hint: str = "music") -> str | None:
-    """从 GenerationResult 中提取第一个音频文件路径，复制到 output/ 目录。"""
-    # print(f"---------------啦啦啦{result.success}\n{result.audios}")
-
+    """从 GenerationResult 中提取第一个音频，保存到 output/ 目录。"""
     if not result.success or not result.audios:
         return None
 
-    src_path = result.audios[0].get("path")
-    if not src_path or not Path(src_path).exists():
+    audio_info = result.audios[0]
+    audio_tensor = audio_info.get("tensor")
+    if audio_tensor is None:
         return None
 
     import datetime
+    import soundfile as sf
+    import numpy as np
+
+    sample_rate = audio_info.get("sample_rate", 48000)
+
     now = datetime.datetime.now()
     date_dir = OUTPUT_DIR / now.strftime("%Y-%m-%d")
     date_dir.mkdir(parents=True, exist_ok=True)
     ts = now.strftime("%Y%m%d_%H%M%S")
     safe = "".join(c if c.isalnum() or c in ("_", "-") else "_" for c in name_hint)
-    ext = Path(src_path).suffix or ".wav"
-    dest = date_dir / f"{safe}_{ts}{ext}"
-    shutil.copy2(src_path, dest)
+    dest = date_dir / f"{safe}_{ts}.wav"
+
+    # tensor 形状为 [channels, samples]，转为 [samples, channels]
+    if hasattr(audio_tensor, "cpu"):
+        audio_np = audio_tensor.cpu().numpy()
+    else:
+        audio_np = np.asarray(audio_tensor)
+    if audio_np.ndim == 2:
+        audio_np = audio_np.T  # [channels, samples] -> [samples, channels]
+
+    sf.write(str(dest), audio_np, sample_rate)
     return str(dest)
 
 
