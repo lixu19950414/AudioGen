@@ -19,6 +19,7 @@ from core.design_model import DesignModel
 from core.model_manager import ModelManager
 from core.preset_model import PresetModel, PRESET_VOICES
 from core.sfx_model import SfxModel
+from core.music_model import MusicModel
 from core.task_queue import TaskQueue
 from core.app_logger import log_event, EVENT_SYNTHESIZE
 
@@ -47,6 +48,7 @@ preset_model = PresetModel()
 clone_model = CloneModel()
 design_model = DesignModel()
 sfx_model = SfxModel()
+music_model = MusicModel()
 asr_model = AsrModel()
 
 task_queue = TaskQueue()
@@ -59,12 +61,14 @@ model_manager.register("tts_preset", preset_model)
 model_manager.register("tts_clone", clone_model)
 model_manager.register("tts_design", design_model)
 model_manager.register("sfx", sfx_model)
+model_manager.register("music", music_model)
 model_manager.register("asr", asr_model)
 
 preset_model.set_model_manager(model_manager)
 clone_model.set_model_manager(model_manager)
 design_model.set_model_manager(model_manager)
 sfx_model.set_model_manager(model_manager)
+music_model.set_model_manager(model_manager)
 asr_model.set_model_manager(model_manager)
 
 # BatchProcessor 需要 preset_model / clone_model / design_model

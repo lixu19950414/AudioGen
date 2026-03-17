@@ -1,6 +1,6 @@
 """
 app.py — DPAudio 游戏语音合成工具
-Gradio 前端，共 8 个 Tab：
+Gradio 前端，共 9 个 Tab：
   1. 预设人声
   2. 自定义人声（自然语言描述音色）
   3. 克隆人声
@@ -9,6 +9,7 @@ Gradio 前端，共 8 个 Tab：
   6. 工具
   7. 音频浏览
   8. 音效合成
+  9. 音乐合成
 """
 
 from __future__ import annotations
@@ -37,6 +38,7 @@ from ui.tab_tools import tab_tools
 from ui.tab_audio_browser import tab_audio_browser
 from ui.tab_batch_download import tab_batch_download
 from ui.tab_sfx import tab_sfx
+from ui.tab_music import tab_music
 from core.app_logger import log_event, EVENT_LOGIN
 
 logging.basicConfig(
@@ -66,6 +68,7 @@ def build_app() -> gr.Blocks:
         browser_audio_out, browser_send_btn = tab_audio_browser()
         tab_batch_download()
         tab_sfx()
+        tab_music()
 
         # 跨 Tab 自动刷新：保存角色 → 刷新管理表格
         clone_save_btn.click(

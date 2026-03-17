@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AudioGen 是一个游戏语音合成工具，基于 **Qwen3-TTS** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设人声、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理和视频音频提取。
+AudioGen 是一个游戏语音合成工具，基于 **Qwen3-TTS** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设人声、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理、视频音频提取、音效合成和音乐合成。
 
 ## 启动
 
@@ -29,6 +29,7 @@ Gradio UI (app.py)
     └── CloneModel (core/clone_model.py)     ← Base 参考音频克隆
     └── DesignModel (core/design_model.py)   ← VoiceDesign 音色设计合成
     └── SfxModel (core/sfx_model.py)         ← Stable Audio 音效合成
+    └── MusicModel (core/music_model.py)     ← ACE-Step 音乐合成
     └── AsrModel (core/asr_model.py)         ← Whisper 语音识别
     └── BatchProcessor (core/batch_processor.py)
             └── 直接调用 PresetModel/CloneModel/DesignModel，逐行合成
@@ -47,6 +48,7 @@ Gradio UI (app.py)
 - `tts_clone` → CloneModel（Base）
 - `tts_design` → DesignModel（VoiceDesign）
 - `sfx` → SfxModel（Stable Audio）
+- `music` → MusicModel（ACE-Step）
 - `asr` → AsrModel（Whisper）
 
 ### 模型
@@ -59,9 +61,10 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 | `core/clone_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | 参考音频克隆 |
 | `core/design_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` | 音色设计合成 |
 | `core/sfx_model.py` | `stabilityai/stable-audio-open-1.0` | 音效合成 |
+| `core/music_model.py` | `ACE-Step/Ace-Step1.5` | 音乐合成 |
 | `core/asr_model.py` | `openai/whisper-large-v3` | 语音识别 |
 
-- `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH。必须在其他模块之前导入。
+- `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH，将 `ACE-Step-1.5/` 加入 `sys.path`。必须在其他模块之前导入。
 - 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
 - `qwen_tts.Qwen3TTSModel` 的方法返回 `(List[np.ndarray], int)`，取 `[0]` 得到单条音频。
 
@@ -79,6 +82,7 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 | 参考音频克隆 | `clone_model.synthesize(text, ref_audio, ref_text)` |
 | 音色设计合成 | `design_model.synthesize(text, instruct)` |
 | 音效合成 | `sfx_model.generate(prompt, ...)` |
+| 音乐合成 | `music_model.generate(caption, lyrics, ...)` |
 | 语音识别 | `asr_model.recognize(audio_path)` |
 
 `synth_to_file()` 在 `ui/common.py` 中内联路由逻辑：有 `ref_audio` → CloneModel，否则 → PresetModel。
@@ -87,11 +91,11 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 ### 任务队列（core/task_queue.py）
 
-`TaskQueue` 使用单 worker 线程，保证同一时间只有一个模型推理任务在执行。各 Tab 提交合成任务时通过 `task_queue.submit()` 入队，任务类型包括 `"preset"` / `"clone"` / `"design"` / `"batch"`。任务状态：`queued` → `running` → `done` / `error`。
+`TaskQueue` 使用单 worker 线程，保证同一时间只有一个模型推理任务在执行。各 Tab 提交合成任务时通过 `task_queue.submit()` 入队，任务类型包括 `"preset"` / `"clone"` / `"design"` / `"sfx"` / `"music"` / `"batch"`。任务状态：`queued` → `running` → `done` / `error`。
 
 ### Gradio UI（app.py）
 
-共 8 个 Tab，`build_app()` 中依次调用：
+共 9 个 Tab，`build_app()` 中依次调用：
 
 | 函数 | Tab | 返回值 |
 |------|-----|--------|
@@ -103,6 +107,8 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 | `tab_tools()` | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)` |
 | `tab_audio_browser()` | 音频浏览 | `(browser_audio_out, browser_send_to_clone_btn)` |
 | `tab_batch_download()` | 批量下载 | 无 |
+| `tab_sfx()` | 音效合成 | `audio_out` |
+| `tab_music()` | 音乐合成 | 无 |
 
 `build_app()` 顶部还包含一个**任务队列状态面板**（`gr.Timer` 每秒轮询），显示当前执行和等待中的推理任务。
 
