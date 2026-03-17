@@ -20,7 +20,7 @@ def tab_single_synth():
             with gr.Column(scale=2):
                 audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 status_out = gr.Textbox(label="状态", interactive=False)
-                send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                send_to_clone_btn = gr.Button("发送到克隆合成")
 
         def on_synth(text, voice, fmt, request: gr.Request):
             if not text.strip():

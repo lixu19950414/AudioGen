@@ -57,7 +57,7 @@ def tab_tools():
                     with gr.Column():
                         tool_audio_out = gr.Audio(label="提取结果", type="filepath", interactive=False)
                         tool_status_out = gr.Textbox(label="状态", interactive=False)
-                        tool_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                        tool_send_to_clone_btn = gr.Button("发送到克隆合成")
 
                 def on_extract_audio(video, start_t, end_t, fmt):
                     if video is None:
@@ -125,7 +125,7 @@ def tab_tools():
             with gr.Tab("人声分离", visible=False):
                 gr.Markdown(
                     "### 使用 Demucs 分离人声与伴奏\n"
-                    "> 上传音频文件，自动分离出人声和伴奏。分离后的人声可发送到模仿音频设计进行音色克隆。"
+                    "> 上传音频文件，自动分离出人声和伴奏。分离后的人声可发送到克隆合成进行音色克隆。"
                 )
                 with gr.Row():
                     with gr.Column():
@@ -142,7 +142,7 @@ def tab_tools():
                         sep_vocals_out = gr.Audio(label="人声", type="filepath", interactive=False)
                         sep_accomp_out = gr.Audio(label="伴奏", type="filepath", interactive=False)
                         sep_status_out = gr.Textbox(label="状态", interactive=False)
-                        sep_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                        sep_send_to_clone_btn = gr.Button("发送到克隆合成")
 
                 def on_separate_vocals(audio_path, model_name):
                     if audio_path is None:

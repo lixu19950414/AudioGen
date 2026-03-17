@@ -49,7 +49,7 @@ def tab_sfx():
             with gr.Column(scale=2):
                 audio_out = gr.Audio(label="生成结果", type="filepath", interactive=False)
                 status_out = gr.Textbox(label="状态", interactive=False)
-                send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                send_to_clone_btn = gr.Button("发送到克隆合成")
 
         def on_generate(prompt, negative, duration, steps, guidance, fmt, request: gr.Request):
             if not prompt or not prompt.strip():

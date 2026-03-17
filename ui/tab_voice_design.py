@@ -1,4 +1,4 @@
-"""Tab 2 — 自定义音色设计"""
+"""Tab 2 — 自定义音色合成"""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from core.app_logger import log_event, EVENT_SYNTHESIZE, EVENT_CHAR_ADD
 
 
 def tab_voice_design():
-    with gr.Tab("自定义音色设计"):
+    with gr.Tab("自定义音色合成"):
         gr.Markdown('通过自然语言描述生成音色，如"一个温柔的年轻女性声音，语速适中"')
         with gr.Row():
             with gr.Column(scale=1):
@@ -47,7 +47,7 @@ def tab_voice_design():
             with gr.Column(scale=2):
                 design_audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 design_status = gr.Textbox(label="状态", interactive=False)
-                design_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                design_send_to_clone_btn = gr.Button("发送到克隆合成")
 
                 gr.Markdown("---\n**保存为设计角色**")
                 design_save_name = gr.Textbox(label="角色名", placeholder="例：温柔少女")

@@ -1,4 +1,4 @@
-"""Tab 3 — 模仿音频设计"""
+"""Tab 3 — 克隆合成"""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from core.app_logger import log_event, EVENT_CHAR_ADD
 
 
 def tab_clone():
-    with gr.Tab("模仿音频设计"):
+    with gr.Tab("克隆合成"):
         gr.Markdown(
             "### 上传参考音频，克隆音色合成新语音\n"
             "建议：3-15 秒，清晰无噪声；提供对应文字可显著提升克隆质量\n"

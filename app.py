@@ -2,8 +2,8 @@
 app.py — DPAudio 游戏语音合成工具
 Gradio 前端，共 8 个 Tab：
   1. 预设音色合成
-  2. 自定义音色设计（自然语言描述音色）
-  3. 模仿音频设计
+  2. 自定义音色合成（自然语言描述音色）
+  3. 克隆合成
   4. 角色管理
   5. 批量处理
   6. 工具
@@ -86,7 +86,7 @@ def build_app() -> gr.Blocks:
             outputs=[design_char_dd],
         )
 
-        # 发送到模仿音频设计
+        # 发送到克隆合成
         synth_send_btn.click(fn=lambda a: a, inputs=[synth_audio_out], outputs=[ref_audio_in])
         design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])

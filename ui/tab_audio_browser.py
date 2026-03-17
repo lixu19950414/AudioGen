@@ -129,7 +129,7 @@ def tab_audio_browser():
                 )
             with gr.Column(scale=1):
                 browser_audio_out = gr.Audio(label="播放音频", type="filepath", interactive=False)
-                browser_send_to_clone_btn = gr.Button("发送到模仿音频设计")
+                browser_send_to_clone_btn = gr.Button("发送到克隆合成")
                 browser_detail = gr.Textbox(label="音频详情", interactive=False, lines=4)
 
         # --- 底部：批量选择与下载 ---
