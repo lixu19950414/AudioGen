@@ -65,7 +65,7 @@ def build_app() -> gr.Blocks:
         tool_audio_out, tool_send_btn, sep_vocals_out, sep_send_btn = tab_tools()
         browser_audio_out, browser_send_btn = tab_audio_browser()
         tab_batch_download()
-        sfx_audio_out, sfx_send_btn = tab_sfx()
+        tab_sfx()
 
         # 跨 Tab 自动刷新：保存角色 → 刷新管理表格
         clone_save_btn.click(
@@ -92,7 +92,6 @@ def build_app() -> gr.Blocks:
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])
         sep_send_btn.click(fn=lambda a: a, inputs=[sep_vocals_out], outputs=[ref_audio_in])
         browser_send_btn.click(fn=lambda a: a, inputs=[browser_audio_out], outputs=[ref_audio_in])
-        sfx_send_btn.click(fn=lambda a: a, inputs=[sfx_audio_out], outputs=[ref_audio_in])
 
         # 页面加载时记录登录日志 + 刷新角色下拉菜单
         def on_page_load(request: gr.Request):
