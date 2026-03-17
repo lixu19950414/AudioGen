@@ -107,6 +107,7 @@ def tab_clone():
             inputs=[ref_audio_in],
             outputs=[ref_text_in, clone_status],
             concurrency_limit=10,
+            trigger_mode="multiple",
         )
 
         def on_clone(char_sel, ref_audio, ref_t, text, fmt, request: gr.Request):
@@ -148,6 +149,7 @@ def tab_clone():
             inputs=[clone_char_dd, ref_audio_in, ref_text_in, clone_text_in, clone_fmt],
             outputs=[clone_audio_out, clone_status],
             concurrency_limit=10,
+            trigger_mode="multiple",
         )
         save_to_char_btn.click(
             fn=on_save_to_char,

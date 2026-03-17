@@ -34,6 +34,7 @@ def tab_single_synth():
             inputs=[text_in, voice_dd, fmt_radio],
             outputs=[audio_out, status_out],
             concurrency_limit=10,
+            trigger_mode="multiple",
         )
 
     return audio_out, send_to_clone_btn
