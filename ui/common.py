@@ -1,4 +1,4 @@
-"""ui/common.py — 共享常量、全局引擎实例、角色数据函数、工具函数"""
+"""ui/common.py — 共享常量、全局模型实例、角色数据函数、工具函数"""
 
 from __future__ import annotations
 
@@ -12,10 +12,13 @@ import numpy as np
 import gradio as gr
 
 from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
-from core.asr_engine import ASREngine
+from core.asr_model import AsrModel
 from core.batch_processor import BatchProcessor
-from core.tts_engine import TTSEngine
-from core.sfx_engine import SFXEngine
+from core.clone_model import CloneModel
+from core.design_model import DesignModel
+from core.model_manager import ModelManager
+from core.preset_model import PresetModel, PRESET_VOICES
+from core.sfx_model import SfxModel
 from core.task_queue import TaskQueue
 from core.app_logger import log_event, EVENT_SYNTHESIZE
 
@@ -38,13 +41,34 @@ for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR, BATCH_OUTPUT_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
 # ---------------------------------------------------------------------------
-# 全局引擎（单例）
+# 全局模型实例（单例）
 # ---------------------------------------------------------------------------
-engine = TTSEngine()
-asr_engine = ASREngine()
-sfx_engine = SFXEngine()
-batch_processor = BatchProcessor(engine)
+preset_model = PresetModel()
+clone_model = CloneModel()
+design_model = DesignModel()
+sfx_model = SfxModel()
+asr_model = AsrModel()
+
 task_queue = TaskQueue()
+
+# ---------------------------------------------------------------------------
+# ModelManager：统一管理所有模型的加载/卸载
+# ---------------------------------------------------------------------------
+model_manager = ModelManager()
+model_manager.register("tts_preset", preset_model)
+model_manager.register("tts_clone", clone_model)
+model_manager.register("tts_design", design_model)
+model_manager.register("sfx", sfx_model)
+model_manager.register("asr", asr_model)
+
+preset_model.set_model_manager(model_manager)
+clone_model.set_model_manager(model_manager)
+design_model.set_model_manager(model_manager)
+sfx_model.set_model_manager(model_manager)
+asr_model.set_model_manager(model_manager)
+
+# BatchProcessor 需要 preset_model / clone_model / design_model
+batch_processor = BatchProcessor(preset_model, clone_model, design_model)
 
 
 # ---------------------------------------------------------------------------
@@ -124,16 +148,21 @@ def synth_to_file(
     """通用合成 → (audio_path | None, status)"""
     user = (request.username or "unknown") if request else "-"
     try:
-        task_type = "clone" if ref_audio is not None else "preset"
-        task_desc = f"{'克隆' if ref_audio is not None else '预设'}合成: {text[:30]}"
+        if not text or not text.strip():
+            raise ValueError("合成文本不能为空")
 
-        def do_synth():
-            return engine.synthesize(
-                text=text,
-                voice_name=voice_name,
-                ref_audio=ref_audio,
-                ref_text=ref_text,
-            )
+        if ref_audio is not None:
+            task_type = "clone"
+            task_desc = f"克隆合成: {text[:30]}"
+
+            def do_synth():
+                return clone_model.synthesize(text, ref_audio, ref_text)
+        else:
+            task_type = "preset"
+            task_desc = f"预设合成: {text[:30]}"
+
+            def do_synth():
+                return preset_model.synthesize(text, voice_name)
 
         audio, sr = task_queue.submit(user, task_type, task_desc, do_synth)
         audio = normalize_audio(audio)

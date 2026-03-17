@@ -12,7 +12,7 @@ import pandas as pd
 
 from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
-from core.tts_engine import PRESET_VOICES
+from core.preset_model import PRESET_VOICES
 from core.app_logger import log_event, EVENT_BATCH
 from ui.common import (
     BATCH_OUTPUT_DIR,

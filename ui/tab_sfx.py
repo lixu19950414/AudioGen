@@ -9,7 +9,7 @@ import gradio as gr
 
 from core.audio_utils import AudioFormat, audio_to_bytes, normalize_audio
 from core.app_logger import log_event, EVENT_SYNTHESIZE
-from ui.common import task_queue, to_gradio_audio, BASE_DIR
+from ui.common import task_queue, to_gradio_audio, BASE_DIR, sfx_model
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +58,8 @@ def tab_sfx():
             user = (request.username or "unknown") if request else "-"
 
             try:
-                from ui.common import sfx_engine
-
                 def do_generate():
-                    return sfx_engine.generate(
+                    return sfx_model.generate(
                         prompt=prompt.strip(),
                         negative_prompt=negative.strip() if negative else "",
                         duration=duration,

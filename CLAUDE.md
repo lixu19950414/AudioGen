@@ -21,43 +21,69 @@ python app.py                      # 启动，访问 http://localhost:7860
 
 ```
 Gradio UI (app.py)
-    └── ui/common.py                         ← 全局 engine/batch_processor/task_queue 单例、路径常量、角色数据函数、synth_to_file
+    └── ui/common.py                         ← 全局模型实例/model_manager/batch_processor/task_queue 单例
     └── ui/tab_*.py                          ← 每个 Tab 一个文件
     └── TaskQueue (core/task_queue.py)       ← 单 worker 线程，保证同一时间只执行一个推理任务
-    └── TTSEngine (core/tts_engine.py)       ← 单例，延迟加载
-            └── CustomVoice 模型（三种合成模式）
-                  ├── generate_custom_voice   预设音色（_preset）
-                  ├── generate_voice_clone    参考克隆（_clone）
-                  └── voice_design            音色设计（自然语言描述）
-    └── ASREngine (core/asr_engine.py)       ← Whisper 语音识别，延迟加载，用于参考音频文字识别
+    └── ModelManager (core/model_manager.py) ← 统一管理所有模型的加载/卸载生命周期
+    └── PresetModel (core/preset_model.py)   ← CustomVoice 预设音色合成
+    └── CloneModel (core/clone_model.py)     ← Base 参考音频克隆
+    └── DesignModel (core/design_model.py)   ← VoiceDesign 音色设计合成
+    └── SfxModel (core/sfx_model.py)         ← Stable Audio 音效合成
+    └── AsrModel (core/asr_model.py)         ← Whisper 语音识别
     └── BatchProcessor (core/batch_processor.py)
-            └── 调用 TTSEngine.synthesize()，逐行合成
+            └── 直接调用 PresetModel/CloneModel/DesignModel，逐行合成
     └── audio_utils (core/audio_utils.py)
             └── numpy array → WAV/MP3 bytes
     └── app_logger (core/app_logger.py)      ← 业务事件日志，按天轮转写入 logs/
     └── config.py                            ← ffmpeg PATH + HF 环境变量 + AUTH_USERS + 模型缓存目录，最早导入
 ```
 
+### 模型管理（core/model_manager.py）
+
+`ModelManager` 统一管理所有模型的生命周期。同一时刻只允许一个模型占用 VRAM，加载新模型前自动卸载其他模型。
+
+所有模型在 `ui/common.py` 中注册到 ModelManager：
+- `tts_preset` → PresetModel（CustomVoice）
+- `tts_clone` → CloneModel（Base）
+- `tts_design` → DesignModel（VoiceDesign）
+- `sfx` → SfxModel（Stable Audio）
+- `asr` → AsrModel（Whisper）
+
 ### 模型
 
-只使用 **一个**模型：`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`，通过 `TTSEngine._get_model()` 延迟加载。
+TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
+
+| 模型文件 | 模型 ID | 用途 |
+|---------|---------|------|
+| `core/preset_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设音色合成 |
+| `core/clone_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | 参考音频克隆 |
+| `core/design_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` | 音色设计合成 |
+| `core/sfx_model.py` | `stabilityai/stable-audio-open-1.0` | 音效合成 |
+| `core/asr_model.py` | `openai/whisper-large-v3` | 语音识别 |
 
 - `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH。必须在其他模块之前导入。
 - 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
 - `qwen_tts.Qwen3TTSModel` 的方法返回 `(List[np.ndarray], int)`，取 `[0]` 得到单条音频。
 
-### 语音识别（core/asr_engine.py）
+### 语音识别（core/asr_model.py）
 
-`ASREngine` 使用 `openai/whisper-large-v3` 模型进行语音识别，用于识别参考音频的文字内容。延迟加载，CUDA 使用 `float16`，CPU 使用 `float32`。提供 `unload()` 方法释放显存（与 TTS 模型共享 GPU 资源时需手动卸载）。
+`AsrModel` 使用 `openai/whisper-large-v3` 模型进行语音识别，用于识别参考音频的文字内容。延迟加载，CUDA 使用 `float16`，CPU 使用 `float32`。通过 ModelManager 统一管理加载/卸载。
 
-### 合成路由（TTSEngine.synthesize）
+### 合成路由
 
-| 条件 | 内部方法 |
-|------|------|
-| `ref_audio` 不为 None | `_clone` → `generate_voice_clone`（non_streaming_mode=True） |
-| 否则 | `_preset` → `generate_custom_voice`（non_streaming_mode=True） |
+各 Tab 直接调用对应的模型实例（在 `ui/common.py` 中创建）：
 
-`generate_voice_clone` 默认 `non_streaming_mode=False`，**调用时必须显式传 `True`**。
+| 场景 | 调用模型 |
+|------|---------|
+| 预设音色合成 | `preset_model.synthesize(text, voice_name)` |
+| 参考音频克隆 | `clone_model.synthesize(text, ref_audio, ref_text)` |
+| 音色设计合成 | `design_model.synthesize(text, instruct)` |
+| 音效合成 | `sfx_model.generate(prompt, ...)` |
+| 语音识别 | `asr_model.recognize(audio_path)` |
+
+`synth_to_file()` 在 `ui/common.py` 中内联路由逻辑：有 `ref_audio` → CloneModel，否则 → PresetModel。
+
+加载前各模型通过 `ModelManager.request_load()` 自动卸载其他模型释放 VRAM。
 
 ### 任务队列（core/task_queue.py）
 
@@ -119,7 +145,7 @@ Gradio UI (app.py)
 }
 ```
 
-## 关键常量（core/tts_engine.py）
+## 关键常量（core/preset_model.py）
 
 - `PRESET_VOICES`：静态预设说话人列表（`["Vivian", "Serena", "Uncle_Fu", ...]`），模型加载后尝试通过 `model.get_supported_speakers()` 动态更新。
 - `CUSTOM_VOICE_MODEL_ID`：`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`

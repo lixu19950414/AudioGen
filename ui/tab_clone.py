@@ -13,7 +13,7 @@ from ui.common import (
     load_characters,
     save_characters,
     synth_to_file,
-    asr_engine,
+    asr_model,
     task_queue,
 )
 from core.app_logger import log_event, EVENT_CHAR_ADD
@@ -95,7 +95,7 @@ def tab_clone():
             user = (request.username or "unknown") if request else "-"
             try:
                 def do_recognize():
-                    return asr_engine.recognize(ref_audio)
+                    return asr_model.recognize(ref_audio)
 
                 text = task_queue.submit(user, "asr", f"语音识别: {Path(ref_audio).name}", do_recognize)
                 return gr.update(value=text), f"识别完成：{text[:50]}..."

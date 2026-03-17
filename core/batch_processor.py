@@ -15,7 +15,9 @@ from typing import Callable, Optional
 import pandas as pd
 
 from core.audio_utils import AudioFormat, normalize_audio, save_audio
-from core.tts_engine import PRESET_VOICES, TTSEngine
+from core.preset_model import PresetModel, PRESET_VOICES
+from core.clone_model import CloneModel
+from core.design_model import DesignModel
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +58,10 @@ def load_table(file_path: str | Path) -> pd.DataFrame:
 
 class BatchProcessor:
 
-    def __init__(self, engine: TTSEngine):
-        self.engine = engine
+    def __init__(self, preset_model: PresetModel, clone_model: CloneModel, design_model: DesignModel):
+        self.preset_model = preset_model
+        self.clone_model = clone_model
+        self.design_model = design_model
 
     def run(
         self,
@@ -124,7 +128,7 @@ class BatchProcessor:
 
                 if voice_type == "design":
                     instruct = cfg.get("instruct", "")
-                    audio, sr = self.engine.voice_design(text=text, instruct=instruct)
+                    audio, sr = self.design_model.synthesize(text=text, instruct=instruct)
                 elif voice_type == "clone":
                     rp = cfg.get("ref_audio_path", "")
                     ref_audio = None
@@ -134,11 +138,11 @@ class BatchProcessor:
                         if abs_rp.exists():
                             ref_audio = str(abs_rp)
                             ref_text = cfg.get("ref_text")
-                    audio, sr = self.engine.synthesize(text=text, ref_audio=ref_audio, ref_text=ref_text)
+                    audio, sr = self.clone_model.synthesize(text=text, ref_audio=ref_audio, ref_text=ref_text)
                 else:
                     # preset
                     voice_name = cfg.get("voice_name")
-                    audio, sr = self.engine.synthesize(text=text, voice_name=voice_name)
+                    audio, sr = self.preset_model.synthesize(text=text, voice_name=voice_name)
 
                 audio = normalize_audio(audio)
                 saved = save_audio(audio, sr, out_path, output_format)

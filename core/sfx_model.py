@@ -1,7 +1,7 @@
 """
-core/sfx_engine.py
+core/sfx_model.py
 
-Stable Audio Open 1.0 音效合成引擎。
+Stable Audio Open 1.0 音效合成模型。
 使用 diffusers 的 StableAudioPipeline 延迟加载模型。
 """
 
@@ -21,37 +21,44 @@ logger = logging.getLogger(__name__)
 SFX_MODEL_ID = "stabilityai/stable-audio-open-1.0"
 
 
-class SFXEngine:
-    """Stable Audio Open 1.0 音效合成引擎（延迟加载，单例使用）。"""
+class SfxModel:
+    """Stable Audio Open 1.0 音效合成模型（延迟加载）。"""
 
     def __init__(self, device: Optional[str] = None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self._pipe = None
-        logger.info("SFXEngine 初始化，device=%s", self.device)
+        self._model_manager = None
+        logger.info("SfxModel 初始化，device=%s", self.device)
 
-    def _get_pipe(self):
-        """延迟加载 StableAudioPipeline，加载前先卸载 TTS 模型释放显存。"""
-        if self._pipe is None:
-            # 卸载 TTS 引擎释放显存
-            from ui.common import engine as tts_engine
-            tts_engine.unload()
+    def set_model_manager(self, manager):
+        """注入 ModelManager 引用。"""
+        self._model_manager = manager
 
-            try:
-                from diffusers import StableAudioPipeline
-            except ImportError as e:
-                raise RuntimeError(
-                    "请安装 diffusers：pip install diffusers>=0.30.0"
-                ) from e
+    def is_loaded(self) -> bool:
+        return self._pipe is not None
 
-            logger.info("正在加载音效模型：%s", SFX_MODEL_ID)
-            self._pipe = StableAudioPipeline.from_pretrained(
-                SFX_MODEL_ID,
-                torch_dtype=torch.float16,
-                cache_dir=os.environ.get("HF_HUB_CACHE"),
-            ).to(self.device)
-            logger.info("音效模型加载完成")
-            log_event(EVENT_MODEL_LOAD, f"模型=SFX ({SFX_MODEL_ID})", user="system")
-        return self._pipe
+    def load(self):
+        """延迟加载 StableAudioPipeline，加载前通过 ModelManager 卸载其他模型。"""
+        if self._pipe is not None:
+            return
+        if self._model_manager is not None:
+            self._model_manager.request_load("sfx")
+
+        try:
+            from diffusers import StableAudioPipeline
+        except ImportError as e:
+            raise RuntimeError(
+                "请安装 diffusers：pip install diffusers>=0.30.0"
+            ) from e
+
+        logger.info("正在加载音效模型：%s", SFX_MODEL_ID)
+        self._pipe = StableAudioPipeline.from_pretrained(
+            SFX_MODEL_ID,
+            torch_dtype=torch.float16,
+            cache_dir=os.environ.get("HF_HUB_CACHE"),
+        ).to(self.device)
+        logger.info("音效模型加载完成")
+        log_event(EVENT_MODEL_LOAD, f"模型=SFX ({SFX_MODEL_ID})", user="system")
 
     def generate(
         self,
@@ -65,8 +72,8 @@ class SFXEngine:
         if not prompt or not prompt.strip():
             raise ValueError("音效描述不能为空")
 
-        pipe = self._get_pipe()
-        output = pipe(
+        self.load()
+        output = self._pipe(
             prompt=prompt,
             negative_prompt=negative_prompt or None,
             num_inference_steps=steps,
@@ -74,7 +81,7 @@ class SFXEngine:
             guidance_scale=guidance_scale,
         )
         audio = output.audios[0]  # tensor or ndarray, shape: (channels, samples)
-        sr = pipe.vae.config.sampling_rate
+        sr = self._pipe.vae.config.sampling_rate
 
         # 确保转为 numpy
         if hasattr(audio, "cpu"):

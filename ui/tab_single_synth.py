@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import gradio as gr
 
-from core.tts_engine import PRESET_VOICES
+from core.preset_model import PRESET_VOICES
 from ui.common import synth_to_file
 
 

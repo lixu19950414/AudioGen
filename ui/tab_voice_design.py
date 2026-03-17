@@ -10,7 +10,7 @@ from core.audio_utils import AudioFormat, audio_to_bytes
 from core.audio_utils import normalize_audio
 from ui.common import (
     BASE_DIR,
-    engine,
+    design_model,
     task_queue,
     load_design_characters,
     save_design_characters,
@@ -78,7 +78,7 @@ def tab_voice_design():
                 task_desc = f"音色设计: {text[:30]}"
 
                 def do_design():
-                    return engine.voice_design(text=text, instruct=instruct)
+                    return design_model.synthesize(text=text, instruct=instruct)
 
                 audio, sr = task_queue.submit(user, "design", task_desc, do_design)
                 audio = normalize_audio(audio)
