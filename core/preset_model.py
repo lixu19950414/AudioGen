@@ -93,7 +93,7 @@ class PresetModel:
         return list(PRESET_VOICES)
 
     def synthesize(self, text: str, voice_name: Optional[str] = None) -> tuple[np.ndarray, int]:
-        """预设音色合成。"""
+        """预设人声合成。"""
         self.load()
         presets = self.get_preset_voices()
         speaker = voice_name if (voice_name and voice_name in presets) else presets[0]

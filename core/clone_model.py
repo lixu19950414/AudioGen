@@ -70,7 +70,7 @@ class CloneModel:
         ref_audio: Union[str, Path],
         ref_text: Optional[str] = None,
     ) -> tuple[np.ndarray, int]:
-        """参考音频克隆合成。"""
+        """参考音频克隆人声。"""
         self.load()
         clone_kwargs = dict(
             text=text,

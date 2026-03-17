@@ -153,7 +153,7 @@ def synth_to_file(
 
         if ref_audio is not None:
             task_type = "clone"
-            task_desc = f"克隆合成: {text[:30]}"
+            task_desc = f"克隆人声: {text[:30]}"
 
             def do_synth():
                 return clone_model.synthesize(text, ref_audio, ref_text)
@@ -172,7 +172,7 @@ def synth_to_file(
         rel_path = Path(path).relative_to(BASE_DIR).as_posix()
         char_info = f" 角色={char_name}" if char_name else ""
         if ref_audio is not None:
-            log_event(EVENT_SYNTHESIZE, f"类型=克隆合成{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
+            log_event(EVENT_SYNTHESIZE, f"类型=克隆人声{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
         else:
             log_event(EVENT_SYNTHESIZE, f"类型=预设合成{char_info} 文本={text[:50]} 音色={voice_name or '默认'} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
         return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{rel_path}"

@@ -1,4 +1,4 @@
-"""Tab 3 — 克隆合成"""
+"""Tab 3 — 克隆人声"""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from core.app_logger import log_event, EVENT_CHAR_ADD
 
 
 def tab_clone():
-    with gr.Tab("克隆合成"):
+    with gr.Tab("克隆人声"):
         gr.Markdown(
             "### 上传参考音频，克隆音色合成新语音\n"
             "建议：3-15 秒，清晰无噪声；提供对应文字可显著提升克隆质量\n"
@@ -56,10 +56,10 @@ def tab_clone():
                     lines=4,
                 )
                 clone_fmt = gr.Radio(choices=["WAV", "MP3"], value="WAV", label="输出格式")
-                clone_btn = gr.Button("克隆合成", variant="primary")
+                clone_btn = gr.Button("克隆人声", variant="primary")
 
             with gr.Column():
-                clone_audio_out = gr.Audio(label="克隆合成结果", type="filepath", interactive=False)
+                clone_audio_out = gr.Audio(label="克隆人声结果", type="filepath", interactive=False)
                 clone_status = gr.Textbox(label="状态", interactive=False)
 
                 gr.Markdown("---\n**保存为角色音色**")

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AudioGen 是一个游戏语音合成工具，基于 **Qwen3-TTS** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设音色合成、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理和视频音频提取。
+AudioGen 是一个游戏语音合成工具，基于 **Qwen3-TTS** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设人声、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理和视频音频提取。
 
 ## 启动
 
@@ -25,7 +25,7 @@ Gradio UI (app.py)
     └── ui/tab_*.py                          ← 每个 Tab 一个文件
     └── TaskQueue (core/task_queue.py)       ← 单 worker 线程，保证同一时间只执行一个推理任务
     └── ModelManager (core/model_manager.py) ← 统一管理所有模型的加载/卸载生命周期
-    └── PresetModel (core/preset_model.py)   ← CustomVoice 预设音色合成
+    └── PresetModel (core/preset_model.py)   ← CustomVoice 预设人声
     └── CloneModel (core/clone_model.py)     ← Base 参考音频克隆
     └── DesignModel (core/design_model.py)   ← VoiceDesign 音色设计合成
     └── SfxModel (core/sfx_model.py)         ← Stable Audio 音效合成
@@ -55,7 +55,7 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 | 模型文件 | 模型 ID | 用途 |
 |---------|---------|------|
-| `core/preset_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设音色合成 |
+| `core/preset_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设人声 |
 | `core/clone_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | 参考音频克隆 |
 | `core/design_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` | 音色设计合成 |
 | `core/sfx_model.py` | `stabilityai/stable-audio-open-1.0` | 音效合成 |
@@ -75,7 +75,7 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 | 场景 | 调用模型 |
 |------|---------|
-| 预设音色合成 | `preset_model.synthesize(text, voice_name)` |
+| 预设人声 | `preset_model.synthesize(text, voice_name)` |
 | 参考音频克隆 | `clone_model.synthesize(text, ref_audio, ref_text)` |
 | 音色设计合成 | `design_model.synthesize(text, instruct)` |
 | 音效合成 | `sfx_model.generate(prompt, ...)` |
@@ -95,9 +95,9 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 | 函数 | Tab | 返回值 |
 |------|-----|--------|
-| `tab_single_synth()` | 预设音色合成 | `(audio_out, send_to_clone_btn)` |
-| `tab_voice_design()` | 自定义音色设计 | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
-| `tab_clone()` | 模仿音频设计 | `(clone_char_dd, save_to_char_btn, ref_audio_in)` |
+| `tab_single_synth()` | 预设人声 | `(audio_out, send_to_clone_btn)` |
+| `tab_voice_design()` | 自定义人声 | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
+| `tab_clone()` | 克隆人声 | `(clone_char_dd, save_to_char_btn, ref_audio_in)` |
 | `tab_character_manager()` | 角色管理 | `(char_table, design_table, delete_clone_btn, delete_design_btn)` |
 | `tab_batch()` | 批量处理 | 无 |
 | `tab_tools()` | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)` |
@@ -110,8 +110,8 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 ### 跨 Tab 交互
 
-- **发送到模仿音频设计**：预设音色合成、自定义音色设计、工具提取音频、音频浏览下方各有按钮，点击后将音频传到模仿音频设计 Tab 的 `ref_audio_in`
-- **保存角色 → 刷新管理表格**：模仿音频设计/自定义音色设计 Tab 保存后自动刷新角色管理表格
+- **发送到克隆人声**：预设人声、自定义人声、工具提取音频、音频浏览下方各有按钮，点击后将音频传到克隆人声 Tab 的 `ref_audio_in`
+- **保存角色 → 刷新管理表格**：克隆人声/自定义人声 Tab 保存后自动刷新角色管理表格
 - **删除角色 → 刷新下拉**：角色管理删除后自动刷新合成 Tab 下拉列表
 - 所有音频输出组件设为 `interactive=False`，仅播放不可上传
 

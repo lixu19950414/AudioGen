@@ -107,7 +107,7 @@ class BatchProcessor:
             stem = fname if fname else f"{row_num:04d}"
             out_path = output_dir / f"{stem}.{output_format}"
 
-            # 查找角色配置：克隆角色 → 设计角色 → 预设音色
+            # 查找角色配置：克隆角色 → 设计角色 → 预设人声
             cfg = characters.get(char_name) or design_characters.get(char_name)
             if not cfg and char_name in PRESET_VOICES:
                 cfg = {"voice_type": "preset", "voice_name": char_name}

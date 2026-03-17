@@ -1,4 +1,4 @@
-"""Tab 1 — 预设音色合成"""
+"""Tab 1 — 预设人声"""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from ui.common import synth_to_file
 
 
 def tab_single_synth():
-    with gr.Tab("预设音色合成"):
-        gr.Markdown("### 预设音色文本合成")
+    with gr.Tab("预设人声"):
+        gr.Markdown("### 预设人声文本合成")
         with gr.Row():
             with gr.Column(scale=2):
                 text_in = gr.Textbox(label="合成文本", placeholder="请输入要合成的文字…", lines=5)
@@ -20,7 +20,7 @@ def tab_single_synth():
             with gr.Column(scale=2):
                 audio_out = gr.Audio(label="合成结果", type="filepath", interactive=False)
                 status_out = gr.Textbox(label="状态", interactive=False)
-                send_to_clone_btn = gr.Button("发送到克隆合成")
+                send_to_clone_btn = gr.Button("发送到克隆人声")
 
         def on_synth(text, voice, fmt, request: gr.Request):
             if not text.strip():
