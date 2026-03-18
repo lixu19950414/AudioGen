@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+import gc
+
 import torch
 
 import config  # noqa: F401  确保 HF 环境变量尽早生效
@@ -76,7 +78,9 @@ class AsrModel:
     def unload(self):
         """释放模型显存。"""
         if self._pipe is not None:
+            del self._pipe
             self._pipe = None
+            gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             logger.info("Whisper 模型已卸载")

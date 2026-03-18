@@ -12,6 +12,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
+import gc
+
 import torch
 
 import config  # noqa: F401  确保 HF 环境变量和 sys.path 尽早生效
@@ -210,10 +212,13 @@ class MusicModel:
     def unload(self):
         """释放显存。"""
         if self._dit_handler is not None:
+            del self._dit_handler
+            del self._llm_handler
             self._dit_handler = None
             self._llm_handler = None
             self._current_dit_config = None
             self._current_lm_model = None
+            gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             logger.info("ACE-Step 音乐模型已卸载，显存已释放")

@@ -11,6 +11,8 @@ import logging
 import os
 from typing import Optional
 
+import gc
+
 import numpy as np
 import torch
 
@@ -96,7 +98,9 @@ class SfxModel:
     def unload(self):
         """释放显存。"""
         if self._pipe is not None:
+            del self._pipe
             self._pipe = None
+            gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             logger.info("音效模型已卸载，显存已释放")

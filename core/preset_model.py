@@ -10,6 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+import gc
+
 import numpy as np
 import torch
 
@@ -81,8 +83,12 @@ class PresetModel:
     def unload(self):
         """卸载模型释放显存。"""
         if self._model is not None:
+            del self._model
             self._model = None
             self._dynamic_speakers = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             logger.info("CustomVoice 模型已卸载")
             log_event(EVENT_MODEL_UNLOAD, "CustomVoice 模型已卸载", user="system")
 

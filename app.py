@@ -27,6 +27,7 @@ from ui.common import (
     design_character_display_rows,
     load_characters,
     load_design_characters,
+    model_manager,
     task_queue,
 )
 from ui.tab_single_synth import tab_single_synth
@@ -139,7 +140,17 @@ def build_app() -> gr.Blocks:
     return demo
 
 
+def cleanup():
+    """服务器关闭时清理所有模型，释放 VRAM。"""
+    logger.info("服务器关闭，开始清理模型...")
+    model_manager.unload_all()
+    logger.info("清理完成")
+
+
 if __name__ == "__main__":
+    import atexit
+
+    atexit.register(cleanup)
     app = build_app()
     app.launch(
         server_name="0.0.0.0",

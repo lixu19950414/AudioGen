@@ -11,6 +11,8 @@ import logging
 from pathlib import Path
 from typing import Optional, Union
 
+import gc
+
 import numpy as np
 import torch
 
@@ -60,7 +62,11 @@ class CloneModel:
     def unload(self):
         """卸载模型释放显存。"""
         if self._model is not None:
+            del self._model
             self._model = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             logger.info("Base 模型已卸载")
             log_event(EVENT_MODEL_UNLOAD, "Base 模型已卸载", user="system")
 

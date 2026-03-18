@@ -7,6 +7,7 @@ core/model_manager.py
 
 from __future__ import annotations
 
+import gc
 import logging
 
 import torch
@@ -34,8 +35,10 @@ class ModelManager:
             if n != name:
                 eng.unload()
                 unloaded.append(n)
-        if unloaded and torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        if unloaded:
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
         if unloaded:
             logger.info("为加载 %s，已卸载引擎：%s", name, ", ".join(unloaded))
 
@@ -43,6 +46,7 @@ class ModelManager:
         """卸载所有引擎。"""
         for eng in self._engines.values():
             eng.unload()
+        gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
         logger.info("所有引擎已卸载")
