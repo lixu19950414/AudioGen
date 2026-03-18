@@ -71,8 +71,8 @@ sfx_model.set_model_manager(model_manager)
 music_model.set_model_manager(model_manager)
 asr_model.set_model_manager(model_manager)
 
-# BatchProcessor 需要 preset_model / clone_model / design_model
-batch_processor = BatchProcessor(preset_model, clone_model, design_model)
+# BatchProcessor 需要 preset_model / clone_model / design_model / sfx_model / music_model
+batch_processor = BatchProcessor(preset_model, clone_model, design_model, sfx_model, music_model)
 
 
 # ---------------------------------------------------------------------------
