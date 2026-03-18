@@ -9,6 +9,7 @@ from pathlib import Path
 
 import gradio as gr
 import pandas as pd
+from openpyxl.comments import Comment
 
 from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
@@ -24,12 +25,34 @@ from ui.common import (
 
 _TEMPLATE_COLUMNS = ["character", "text", "filename"]
 
+_TEMPLATE_COMMENTS = {
+    "character": "角色名（必填）\n需与已保存的角色名完全匹配，\n支持克隆角色、设计角色和预设人声。",
+    "text": "台词文本（必填）\n要合成的语音文字内容。",
+    "filename": "输出文件名（可选）\n不填则按行号自动命名，如 0001.wav。\n无需填写扩展名。",
+}
+
+_TEMPLATE_EXAMPLE = {
+    "character": "Vivian",
+    "text": "你好，欢迎来到游戏世界！",
+    "filename": "welcome",
+}
+
 
 def _generate_template() -> str:
     """生成 Excel 模板文件，返回路径。"""
-    df = pd.DataFrame(columns=_TEMPLATE_COLUMNS)
+    df = pd.DataFrame([_TEMPLATE_EXAMPLE], columns=_TEMPLATE_COLUMNS)
     path = Path(tempfile.gettempdir()) / "批量合成模板.xlsx"
     df.to_excel(path, index=False)
+
+    from openpyxl import load_workbook
+    wb = load_workbook(path)
+    ws = wb.active
+    for col_idx, col_name in enumerate(_TEMPLATE_COLUMNS, start=1):
+        if col_name in _TEMPLATE_COMMENTS:
+            ws.cell(row=1, column=col_idx).comment = Comment(
+                _TEMPLATE_COMMENTS[col_name], "AudioGen"
+            )
+    wb.save(path)
     return str(path)
 
 

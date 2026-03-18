@@ -9,6 +9,7 @@ from pathlib import Path
 
 import gradio as gr
 import pandas as pd
+from openpyxl.comments import Comment
 
 from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
@@ -21,12 +22,36 @@ from ui.common import (
 
 _SFX_TEMPLATE_COLUMNS = ["prompt", "negative_prompt", "duration", "filename"]
 
+_SFX_TEMPLATE_COMMENTS = {
+    "prompt": "音效描述（必填）\n用英文描述想要的音效，\n如 gunshot, footsteps on gravel。",
+    "negative_prompt": "负面提示词（可选）\n不希望出现的音效特征，\n如 music, voice。不填则不限制。",
+    "duration": "时长秒数（可选）\n音效持续时间，1~47 秒。\n不填则使用页面上的默认时长。",
+    "filename": "输出文件名（可选）\n不填则按行号自动命名，如 0001.wav。\n无需填写扩展名。",
+}
+
+_SFX_TEMPLATE_EXAMPLE = {
+    "prompt": "gunshot in a large hall with echo",
+    "negative_prompt": "music",
+    "duration": 5,
+    "filename": "gunshot_hall",
+}
+
 
 def _generate_sfx_template() -> str:
     """生成批量音效合成 Excel 模板文件，返回路径。"""
-    df = pd.DataFrame(columns=_SFX_TEMPLATE_COLUMNS)
+    df = pd.DataFrame([_SFX_TEMPLATE_EXAMPLE], columns=_SFX_TEMPLATE_COLUMNS)
     path = Path(tempfile.gettempdir()) / "批量音效合成模板.xlsx"
     df.to_excel(path, index=False)
+
+    from openpyxl import load_workbook
+    wb = load_workbook(path)
+    ws = wb.active
+    for col_idx, col_name in enumerate(_SFX_TEMPLATE_COLUMNS, start=1):
+        if col_name in _SFX_TEMPLATE_COMMENTS:
+            ws.cell(row=1, column=col_idx).comment = Comment(
+                _SFX_TEMPLATE_COMMENTS[col_name], "AudioGen"
+            )
+    wb.save(path)
     return str(path)
 
 

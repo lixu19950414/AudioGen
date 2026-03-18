@@ -9,6 +9,7 @@ from pathlib import Path
 
 import gradio as gr
 import pandas as pd
+from openpyxl.comments import Comment
 
 from core.batch_processor import load_table
 from core.app_logger import log_event, EVENT_BATCH
@@ -21,6 +22,22 @@ from ui.common import (
 
 _MUSIC_TEMPLATE_COLUMNS = ["caption", "lyrics", "instrumental", "duration", "filename"]
 
+_MUSIC_TEMPLATE_COMMENTS = {
+    "caption": "音乐描述（与 lyrics 至少填一个）\n描述音乐风格、情绪等，\n如 epic orchestral battle music。",
+    "lyrics": "歌词（与 caption 至少填一个）\n歌曲的歌词内容。\n纯器乐时可不填。",
+    "instrumental": "纯器乐模式（可选）\nTRUE = 无人声纯器乐，FALSE = 有人声。\n不填则使用页面上的默认设置。",
+    "duration": "时长秒数（可选）\n音乐持续时间，10~600 秒。\n不填则使用页面上的默认时长。",
+    "filename": "输出文件名（可选）\n不填则按行号自动命名，如 0001.wav。\n无需填写扩展名。",
+}
+
+_MUSIC_TEMPLATE_EXAMPLE = {
+    "caption": "epic orchestral battle music, intense and dramatic",
+    "lyrics": "",
+    "instrumental": "TRUE",
+    "duration": 30,
+    "filename": "battle_theme",
+}
+
 VOCAL_LANGUAGES = [
     "unknown", "zh", "en", "ja", "ko", "fr", "de", "es", "pt", "ru",
     "it", "ar", "hi", "th", "vi", "id", "tr", "pl", "nl", "sv",
@@ -29,9 +46,19 @@ VOCAL_LANGUAGES = [
 
 def _generate_music_template() -> str:
     """生成批量音乐合成 Excel 模板文件，返回路径。"""
-    df = pd.DataFrame(columns=_MUSIC_TEMPLATE_COLUMNS)
+    df = pd.DataFrame([_MUSIC_TEMPLATE_EXAMPLE], columns=_MUSIC_TEMPLATE_COLUMNS)
     path = Path(tempfile.gettempdir()) / "批量音乐合成模板.xlsx"
     df.to_excel(path, index=False)
+
+    from openpyxl import load_workbook
+    wb = load_workbook(path)
+    ws = wb.active
+    for col_idx, col_name in enumerate(_MUSIC_TEMPLATE_COLUMNS, start=1):
+        if col_name in _MUSIC_TEMPLATE_COMMENTS:
+            ws.cell(row=1, column=col_idx).comment = Comment(
+                _MUSIC_TEMPLATE_COMMENTS[col_name], "AudioGen"
+            )
+    wb.save(path)
     return str(path)
 
 
