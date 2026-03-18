@@ -34,7 +34,7 @@ def _generate_template() -> str:
 
 
 def tab_batch():
-    with gr.Tab("批量处理"):
+    with gr.Tab("批量处理人声"):
         gr.Markdown(
             "### 上传 Excel 批量合成游戏台词\n"
             "Excel 固定三列：`character`（角色名，必填）、`text`（台词文本，必填）、`filename`（输出文件名，可选）\n\n"
