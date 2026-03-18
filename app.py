@@ -57,14 +57,13 @@ logger = logging.getLogger(__name__)
 
 def build_app() -> gr.Blocks:
     with gr.Blocks(title="AudioGen — 游戏语音合成工具") as demo:
-        gr.Markdown(
-            "# AudioGen — 游戏语音合成工具\n"
-        )
+        title_md = gr.Markdown("# AudioGen — 游戏语音合成工具\n")
+        gpu_timer = gr.Timer(1)
 
         # ---- 任务队列状态面板 ----
         with gr.Accordion("任务队列状态", open=True):
             queue_status_md = gr.Markdown("当前无任务")
-            queue_timer = gr.Timer(5)
+            queue_timer = gr.Timer(1)
 
         with gr.Tabs():
             # ---- 语音合成 ----
@@ -129,7 +128,7 @@ def build_app() -> gr.Blocks:
             outputs=[clone_char_dd, design_char_dd],
         )
 
-        # ---- 任务队列状态轮询 ----
+        # ---- 标题显存信息轮询 ----
         def _get_gpu_vram_info() -> str:
             """通过 nvidia-smi 获取显存使用情况（MB）。"""
             try:
@@ -139,23 +138,26 @@ def build_app() -> gr.Blocks:
                     capture_output=True, text=True, timeout=5,
                 )
                 if result.returncode != 0:
-                    return "显存信息: 获取失败"
-                lines = []
+                    return ""
+                parts_list = []
                 for row in result.stdout.strip().splitlines():
                     parts = [p.strip() for p in row.split(",")]
                     if len(parts) == 4:
                         idx, name, used, total = parts
-                        lines.append(f"GPU{idx} ({name}): {used} MB / {total} MB")
-                return "**显存**: " + "　|　".join(lines) if lines else "显存信息: 解析失败"
+                        parts_list.append(f"GPU{idx} ({name}): {used} MB / {total} MB")
+                gpu_text = "　|　".join(parts_list) if parts_list else ""
             except Exception:
-                return "显存信息: nvidia-smi 不可用"
+                gpu_text = ""
+            if gpu_text:
+                return f"# AudioGen — 游戏语音合成工具　　<sub>{gpu_text}</sub>\n"
+            return "# AudioGen — 游戏语音合成工具\n"
 
+        gpu_timer.tick(fn=_get_gpu_vram_info, outputs=[title_md])
+
+        # ---- 任务队列状态轮询 ----
         def refresh_queue_status():
             status = task_queue.get_status()
             lines = []
-            # 显存使用情况
-            lines.append(_get_gpu_vram_info())
-            lines.append("")
             current = status["current"]
             if current:
                 elapsed = time.time() - (current.started_at or current.submitted_at)
