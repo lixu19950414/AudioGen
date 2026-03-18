@@ -44,6 +44,7 @@ Gradio UI (app.py)
 `ModelManager` 统一管理所有模型的生命周期。同一时刻只允许一个模型占用 VRAM，加载新模型前自动卸载其他模型。
 
 所有模型在 `ui/common.py` 中注册到 ModelManager：
+
 - `tts_preset` → PresetModel（CustomVoice）
 - `tts_clone` → CloneModel（Base）
 - `tts_design` → DesignModel（VoiceDesign）
@@ -55,14 +56,14 @@ Gradio UI (app.py)
 
 TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
-| 模型文件 | 模型 ID | 用途 |
-|---------|---------|------|
-| `core/preset_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设人声 |
-| `core/clone_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | 参考音频克隆 |
+| 模型文件                 | 模型 ID                                  | 用途         |
+| ------------------------ | ---------------------------------------- | ------------ |
+| `core/preset_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设人声     |
+| `core/clone_model.py`  | `Qwen/Qwen3-TTS-12Hz-1.7B-Base`        | 参考音频克隆 |
 | `core/design_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` | 音色设计合成 |
-| `core/sfx_model.py` | `stabilityai/stable-audio-open-1.0` | 音效合成 |
-| `core/music_model.py` | `ACE-Step/Ace-Step1.5` | 音乐合成 |
-| `core/asr_model.py` | `openai/whisper-large-v3` | 语音识别 |
+| `core/sfx_model.py`    | `stabilityai/stable-audio-open-1.0`    | 音效合成     |
+| `core/music_model.py`  | `ACE-Step/Ace-Step1.5`                 | 音乐合成     |
+| `core/asr_model.py`    | `openai/whisper-large-v3`              | 语音识别     |
 
 - `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH，将 `ACE-Step-1.5/` 加入 `sys.path`。必须在其他模块之前导入。
 - 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
@@ -76,14 +77,14 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 各 Tab 直接调用对应的模型实例（在 `ui/common.py` 中创建）：
 
-| 场景 | 调用模型 |
-|------|---------|
-| 预设人声 | `preset_model.synthesize(text, voice_name)` |
+| 场景         | 调用模型                                              |
+| ------------ | ----------------------------------------------------- |
+| 预设人声     | `preset_model.synthesize(text, voice_name)`         |
 | 参考音频克隆 | `clone_model.synthesize(text, ref_audio, ref_text)` |
-| 音色设计合成 | `design_model.synthesize(text, instruct)` |
-| 音效合成 | `sfx_model.generate(prompt, ...)` |
-| 音乐合成 | `music_model.generate(caption, lyrics, ...)` |
-| 语音识别 | `asr_model.recognize(audio_path)` |
+| 音色设计合成 | `design_model.synthesize(text, instruct)`           |
+| 音效合成     | `sfx_model.generate(prompt, ...)`                   |
+| 音乐合成     | `music_model.generate(caption, lyrics, ...)`        |
+| 语音识别     | `asr_model.recognize(audio_path)`                   |
 
 `synth_to_file()` 在 `ui/common.py` 中内联路由逻辑：有 `ref_audio` → CloneModel，否则 → PresetModel。
 
@@ -97,22 +98,24 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 
 共 9 个 Tab，`build_app()` 中依次调用：
 
-| 函数 | Tab | 返回值 |
-|------|-----|--------|
-| `tab_single_synth()` | 预设人声 | `(audio_out, send_to_clone_btn)` |
-| `tab_voice_design()` | 自定义人声 | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
-| `tab_clone()` | 克隆人声 | `(clone_char_dd, save_to_char_btn, ref_audio_in)` |
-| `tab_character_manager()` | 角色管理 | `(char_table, design_table, delete_clone_btn, delete_design_btn)` |
-| `tab_batch()` | 批量处理 | 无 |
-| `tab_tools()` | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)` |
-| `tab_audio_browser()` | 音频浏览 | `(browser_audio_out, browser_send_to_clone_btn)` |
-| `tab_batch_download()` | 批量下载 | 无 |
-| `tab_sfx()` | 音效合成 | `audio_out` |
-| `tab_music()` | 音乐合成 | 无 |
+| 函数                        | Tab                  | 返回值                                                                            |
+| --------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| `tab_single_synth()`      | 预设人声             | `(audio_out, send_to_clone_btn)`                                                |
+| `tab_voice_design()`      | 自定义人声           | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
+| `tab_clone()`             | 克隆人声             | `(clone_char_dd, save_to_char_btn, ref_audio_in)`                               |
+| `tab_character_manager()` | 角色管理             | `(char_table, design_table, delete_clone_btn, delete_design_btn)`               |
+| `tab_batch()`             | 批量处理             | 无                                                                                |
+| `tab_tools()`             | 工具（视频音频提取） | `(tool_audio_out, tool_send_to_clone_btn)`                                      |
+| `tab_audio_browser()`     | 音频浏览             | `(browser_audio_out, browser_send_to_clone_btn)`                                |
+| `tab_batch_download()`    | 批量下载             | 无                                                                                |
+| `tab_sfx()`               | 音效合成             | `audio_out`                                                                     |
+| `tab_music()`             | 音乐合成             | 无                                                                                |
 
 `build_app()` 顶部还包含一个**任务队列状态面板**（`gr.Timer` 每秒轮询），显示当前执行和等待中的推理任务。
 
 各 Tab 函数返回需要跨 Tab 交互的组件，在 `build_app()` 中统一连接事件。
+
+**注意** 禁止使用CSS选择器实现样式修改。
 
 ### 跨 Tab 交互
 
