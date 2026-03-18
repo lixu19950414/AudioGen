@@ -11,3 +11,4 @@ demucs
 diffusers>=0.30.0
 torchsde
 vector_quantize_pytorch
+loguru
