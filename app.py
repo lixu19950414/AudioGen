@@ -66,18 +66,24 @@ def build_app() -> gr.Blocks:
             queue_status_md = gr.Markdown("当前无任务")
             queue_timer = gr.Timer(5)
 
-        synth_audio_out, synth_send_btn = tab_single_synth()
-        design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
-        clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
-        char_table, design_table, delete_clone_btn, delete_design_btn = tab_character_manager()
-        tab_batch()
-        tool_audio_out, tool_send_btn, sep_vocals_out, sep_send_btn = tab_tools()
-        browser_audio_out, browser_send_btn = tab_audio_browser()
-        tab_batch_download()
-        tab_sfx()
-        tab_batch_sfx()
-        tab_music()
-        tab_batch_music()
+        with gr.Tabs():
+            # ---- 语音合成 ----
+            synth_audio_out, synth_send_btn = tab_single_synth()
+            design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
+            clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
+            char_table, design_table, delete_clone_btn, delete_design_btn = tab_character_manager()
+            tab_batch()
+            with gr.Tab("┃", interactive=False): pass
+            # ---- 音效与音乐 ----
+            tab_sfx()
+            tab_batch_sfx()
+            tab_music()
+            tab_batch_music()
+            with gr.Tab("┃ ", interactive=False): pass
+            # ---- 工具 ----
+            browser_audio_out, browser_send_btn = tab_audio_browser()
+            tab_batch_download()
+            tool_audio_out, tool_send_btn, sep_vocals_out, sep_send_btn = tab_tools()
 
         # 跨 Tab 自动刷新：保存角色 → 刷新管理表格
         clone_save_btn.click(
