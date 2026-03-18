@@ -18,6 +18,7 @@ import config  # noqa: F401  确保 HF 环境变量尽早生效
 from config import AUTH_USERS
 
 import logging
+import subprocess
 import time
 
 import gradio as gr
@@ -58,7 +59,7 @@ def build_app() -> gr.Blocks:
         # ---- 任务队列状态面板 ----
         with gr.Accordion("任务队列状态", open=True):
             queue_status_md = gr.Markdown("当前无任务")
-            queue_timer = gr.Timer(1)
+            queue_timer = gr.Timer(5)
 
         synth_audio_out, synth_send_btn = tab_single_synth()
         design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
@@ -116,9 +117,32 @@ def build_app() -> gr.Blocks:
         )
 
         # ---- 任务队列状态轮询 ----
+        def _get_gpu_vram_info() -> str:
+            """通过 nvidia-smi 获取显存使用情况（MB）。"""
+            try:
+                result = subprocess.run(
+                    ["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total",
+                     "--format=csv,noheader,nounits"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                if result.returncode != 0:
+                    return "显存信息: 获取失败"
+                lines = []
+                for row in result.stdout.strip().splitlines():
+                    parts = [p.strip() for p in row.split(",")]
+                    if len(parts) == 4:
+                        idx, name, used, total = parts
+                        lines.append(f"GPU{idx} ({name}): {used} MB / {total} MB")
+                return "**显存**: " + "　|　".join(lines) if lines else "显存信息: 解析失败"
+            except Exception:
+                return "显存信息: nvidia-smi 不可用"
+
         def refresh_queue_status():
             status = task_queue.get_status()
             lines = []
+            # 显存使用情况
+            lines.append(_get_gpu_vram_info())
+            lines.append("")
             current = status["current"]
             if current:
                 elapsed = time.time() - (current.started_at or current.submitted_at)
