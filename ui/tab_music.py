@@ -9,6 +9,7 @@ from pathlib import Path
 import gradio as gr
 
 from core.app_logger import log_event, EVENT_SYNTHESIZE
+from core.music_model import DIT_MODELS, LM_MODELS, DEFAULT_DIT_MODEL, DEFAULT_LM_MODEL
 from ui.common import task_queue, BASE_DIR, OUTPUT_DIR, music_model
 
 logger = logging.getLogger(__name__)
@@ -76,6 +77,19 @@ def tab_music():
         gr.Markdown("### 音乐合成（ACE-Step 1.5）\n"
                      "基于 ACE-Step 模型生成音乐，支持文本生成、翻唱和音频重绘。")
 
+        # 模型选择（所有子 Tab 共享）
+        with gr.Row():
+            dit_model_dd = gr.Dropdown(
+                choices=[(v, k) for k, v in DIT_MODELS.items()],
+                value=DEFAULT_DIT_MODEL,
+                label="DiT 模型",
+            )
+            lm_model_dd = gr.Dropdown(
+                choices=[(v, k) for k, v in LM_MODELS.items()],
+                value=DEFAULT_LM_MODEL,
+                label="LM 模型",
+            )
+
         with gr.Tabs():
             # ==============================================================
             # 子 Tab 1: 文本生成音乐
@@ -141,7 +155,8 @@ def tab_music():
 
                 def on_text2music(caption, lyrics, instrumental, vocal_lang,
                                   duration, bpm, keyscale, timesig,
-                                  steps, guidance, seed, request: gr.Request):
+                                  steps, guidance, seed, dit_model, lm_model,
+                                  request: gr.Request):
                     if not caption.strip() and not lyrics.strip():
                         return None, "音乐描述和歌词不能同时为空"
 
@@ -161,6 +176,8 @@ def tab_music():
                                 inference_steps=int(steps),
                                 guidance_scale=guidance,
                                 seed=int(seed),
+                                dit_config=dit_model,
+                                lm_model=lm_model,
                             )
 
                         result = task_queue.submit(
@@ -188,7 +205,8 @@ def tab_music():
                     fn=on_text2music,
                     inputs=[caption_in, lyrics_in, instrumental_cb, vocal_lang_dd,
                             duration_slider, bpm_in, keyscale_dd, timesig_dd,
-                            steps_slider, guidance_slider, seed_in],
+                            steps_slider, guidance_slider, seed_in,
+                            dit_model_dd, lm_model_dd],
                     outputs=[t2m_audio_out, t2m_status_out],
                     concurrency_limit=10,
                     trigger_mode="multiple",
@@ -260,7 +278,7 @@ def tab_music():
 
                 def on_cover(ref_audio, caption, lyrics, instrumental, vocal_lang,
                              duration, strength, steps, guidance, seed, noise,
-                             request: gr.Request):
+                             dit_model, lm_model, request: gr.Request):
                     if ref_audio is None:
                         return None, "请先上传参考音频"
                     if not caption.strip():
@@ -282,6 +300,8 @@ def tab_music():
                                 inference_steps=int(steps),
                                 guidance_scale=guidance,
                                 seed=int(seed),
+                                dit_config=dit_model,
+                                lm_model=lm_model,
                             )
 
                         result = task_queue.submit(
@@ -310,7 +330,8 @@ def tab_music():
                     inputs=[cover_ref_audio, cover_caption, cover_lyrics,
                             cover_instrumental, cover_vocal_lang,
                             cover_duration, cover_strength,
-                            cover_steps, cover_guidance, cover_seed, cover_noise],
+                            cover_steps, cover_guidance, cover_seed, cover_noise,
+                            dit_model_dd, lm_model_dd],
                     outputs=[cover_audio_out, cover_status_out],
                     concurrency_limit=10,
                     trigger_mode="multiple",
@@ -376,7 +397,7 @@ def tab_music():
 
                 def on_repaint(src_audio, caption, lyrics,
                                start, end, strength, mode,
-                               steps, guidance, seed,
+                               steps, guidance, seed, dit_model, lm_model,
                                request: gr.Request):
                     if src_audio is None:
                         return None, "请先上传源音频"
@@ -398,6 +419,8 @@ def tab_music():
                                 inference_steps=int(steps),
                                 guidance_scale=guidance,
                                 seed=int(seed),
+                                dit_config=dit_model,
+                                lm_model=lm_model,
                             )
 
                         result = task_queue.submit(
@@ -426,7 +449,7 @@ def tab_music():
                     inputs=[repaint_src_audio, repaint_caption, repaint_lyrics,
                             repaint_start, repaint_end, repaint_strength_slider,
                             repaint_mode_dd, repaint_steps, repaint_guidance,
-                            repaint_seed],
+                            repaint_seed, dit_model_dd, lm_model_dd],
                     outputs=[repaint_audio_out, repaint_status_out],
                     concurrency_limit=10,
                     trigger_mode="multiple",

@@ -22,6 +22,23 @@ logger = logging.getLogger(__name__)
 # ACE-Step 项目根目录
 ACESTEP_ROOT = Path(__file__).resolve().parent.parent / "ACE-Step-1.5"
 
+# 可用的 DiT 模型配置
+DIT_MODELS = {
+    "acestep-v15-turbo": "Turbo（8步，推荐）",
+    "acestep-v15-sft": "SFT（50步，高质量）",
+    "acestep-v15-base": "Base（50步，基础）",
+}
+
+# 可用的 LM 模型配置
+LM_MODELS = {
+    "acestep-5Hz-lm-0.6B": "0.6B（轻量，≤6GB 显存）",
+    "acestep-5Hz-lm-1.7B": "1.7B（中等，8-16GB 显存）",
+    "acestep-5Hz-lm-4B": "4B（最优，20GB+ 显存）",
+}
+
+DEFAULT_DIT_MODEL = "acestep-v15-turbo"
+DEFAULT_LM_MODEL = "acestep-5Hz-lm-0.6B"
+
 
 class MusicModel:
     """ACE-Step 1.5 音乐合成模型（延迟加载）。"""
@@ -31,6 +48,8 @@ class MusicModel:
         self._dit_handler = None
         self._llm_handler = None
         self._model_manager = None
+        self._current_dit_config: Optional[str] = None
+        self._current_lm_model: Optional[str] = None
         logger.info("MusicModel 初始化，device=%s", self.device)
 
     def set_model_manager(self, manager):
@@ -40,10 +59,18 @@ class MusicModel:
     def is_loaded(self) -> bool:
         return self._dit_handler is not None
 
-    def load(self):
-        """延迟加载 DiT + LM handler。"""
-        if self._dit_handler is not None:
+    def load(self, dit_config: str = DEFAULT_DIT_MODEL, lm_model: str = DEFAULT_LM_MODEL):
+        """延迟加载 DiT + LM handler。如果模型配置变更，自动重新加载。"""
+        # 如果已加载且配置相同，直接返回
+        if (self._dit_handler is not None
+                and self._current_dit_config == dit_config
+                and self._current_lm_model == lm_model):
             return
+        # 如果已加载但配置不同，先卸载
+        if self._dit_handler is not None:
+            logger.info("模型配置变更，卸载当前模型...")
+            self.unload()
+
         if self._model_manager is not None:
             self._model_manager.request_load("music")
 
@@ -70,9 +97,6 @@ class MusicModel:
         # 确保模型已下载
         logger.info("检查/下载 ACE-Step 模型...")
         ensure_main_model(checkpoints_dir=checkpoints_dir)
-
-        dit_config = "acestep-v15-turbo"
-        lm_model = "acestep-5Hz-lm-0.6B"
 
         ensure_dit_model(dit_config, checkpoints_dir=checkpoints_dir)
         ensure_lm_model(lm_model, checkpoints_dir=checkpoints_dir)
@@ -104,6 +128,8 @@ class MusicModel:
 
         self._dit_handler = dit_handler
         self._llm_handler = llm_handler
+        self._current_dit_config = dit_config
+        self._current_lm_model = lm_model
         logger.info("ACE-Step 音乐模型加载完成")
         log_event(EVENT_MODEL_LOAD, f"模型=ACE-Step (DiT={dit_config}, LM={lm_model})", user="system")
 
@@ -129,6 +155,8 @@ class MusicModel:
         repaint_mode: str = "balanced",
         audio_cover_strength: float = 1.0,
         cover_noise_strength: float = 0.0,
+        dit_config: str = DEFAULT_DIT_MODEL,
+        lm_model: str = DEFAULT_LM_MODEL,
     ) -> dict:
         """
         统一生成接口。
@@ -138,7 +166,7 @@ class MusicModel:
         if not caption and not lyrics:
             raise ValueError("音乐描述(caption)和歌词(lyrics)不能同时为空")
 
-        self.load()
+        self.load(dit_config=dit_config, lm_model=lm_model)
 
         from acestep.inference import GenerationParams, GenerationConfig, generate_music
 
@@ -184,6 +212,8 @@ class MusicModel:
         if self._dit_handler is not None:
             self._dit_handler = None
             self._llm_handler = None
+            self._current_dit_config = None
+            self._current_lm_model = None
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             logger.info("ACE-Step 音乐模型已卸载，显存已释放")
