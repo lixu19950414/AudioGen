@@ -12,6 +12,7 @@ import pandas as pd
 
 from core.batch_processor import load_table
 from core.app_logger import log_event, EVENT_BATCH
+from core.music_model import DIT_MODELS, LM_MODELS, DEFAULT_DIT_MODEL, DEFAULT_LM_MODEL
 from ui.common import (
     BATCH_OUTPUT_DIR,
     batch_processor,
@@ -51,6 +52,17 @@ def tab_batch_music():
                 )
             with gr.Column():
                 with gr.Row():
+                    dit_model_dd = gr.Dropdown(
+                        choices=[(v, k) for k, v in DIT_MODELS.items()],
+                        value=DEFAULT_DIT_MODEL,
+                        label="DiT 模型",
+                    )
+                    lm_model_dd = gr.Dropdown(
+                        choices=[(v, k) for k, v in LM_MODELS.items()],
+                        value=DEFAULT_LM_MODEL,
+                        label="LM 模型",
+                    )
+                with gr.Row():
                     default_duration = gr.Slider(
                         minimum=10, maximum=600, value=30, step=5,
                         label="默认时长（秒）",
@@ -81,7 +93,7 @@ def tab_batch_music():
             path = _generate_music_template()
             return gr.update(value=path, visible=True)
 
-        def run_batch_music(file, duration, steps, guidance, vocal_lang, instrumental, request: gr.Request):
+        def run_batch_music(file, duration, steps, guidance, vocal_lang, instrumental, dit_model, lm_model, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
             if file is None:
                 return "请先上传文件", gr.update(value=None)
@@ -141,6 +153,8 @@ def tab_batch_music():
                     guidance_scale=guidance,
                     vocal_language=vocal_lang,
                     default_instrumental=instrumental,
+                    dit_config=dit_model,
+                    lm_model=lm_model,
                     progress_cb=progress_cb,
                 )
 
@@ -163,7 +177,7 @@ def tab_batch_music():
         template_btn.click(fn=download_template, inputs=[], outputs=[template_file])
         batch_btn.click(
             fn=run_batch_music,
-            inputs=[file_upload, default_duration, steps_slider, guidance_slider, vocal_lang_dd, instrumental_cb],
+            inputs=[file_upload, default_duration, steps_slider, guidance_slider, vocal_lang_dd, instrumental_cb, dit_model_dd, lm_model_dd],
             outputs=[batch_log, batch_download],
             concurrency_limit=10,
         )

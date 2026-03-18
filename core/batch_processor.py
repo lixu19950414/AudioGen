@@ -255,6 +255,8 @@ class BatchProcessor:
         guidance_scale: float = 7.0,
         vocal_language: str = "unknown",
         default_instrumental: bool = False,
+        dit_config: str = "",
+        lm_model: str = "",
         progress_cb: Optional[Callable[[int, int, str], None]] = None,
     ) -> BatchResult:
         """逐行合成音乐。列：caption / lyrics（至少一个）、instrumental / duration / filename（可选）。"""
@@ -290,7 +292,7 @@ class BatchProcessor:
                 if progress_cb:
                     progress_cb(row_num, result.total, f"正在生成 {row_num}/{result.total}：{(caption or lyrics)[:40]}…")
 
-                gen_result = self.music_model.generate(
+                kwargs = dict(
                     task_type="text2music",
                     caption=caption,
                     lyrics=lyrics,
@@ -300,6 +302,11 @@ class BatchProcessor:
                     inference_steps=inference_steps,
                     guidance_scale=guidance_scale,
                 )
+                if dit_config:
+                    kwargs["dit_config"] = dit_config
+                if lm_model:
+                    kwargs["lm_model"] = lm_model
+                gen_result = self.music_model.generate(**kwargs)
 
                 if not gen_result.success or not gen_result.audios:
                     raise RuntimeError(gen_result.error or "生成结果为空")
