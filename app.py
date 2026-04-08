@@ -58,13 +58,12 @@ logger = logging.getLogger(__name__)
 def build_app() -> gr.Blocks:
     with gr.Blocks(title="AudioGen — 游戏语音合成工具") as demo:
         title_md = gr.Markdown("# AudioGen — 游戏语音合成工具\n")
+        gpu_timer = gr.Timer(1)
 
         # ---- 任务队列状态面板 ----
         with gr.Accordion("任务队列状态", open=True):
             queue_status_md = gr.Markdown("当前无任务")
-
-        # 单一定时器，避免多个 Timer 同时 tick 导致 Svelte effect 循环
-        poll_timer = gr.Timer(3)
+            queue_timer = gr.Timer(1)
 
         with gr.Tabs():
             # ---- 语音合成 ----
@@ -129,10 +128,9 @@ def build_app() -> gr.Blocks:
             outputs=[clone_char_dd, design_char_dd],
         )
 
-        # ---- 合并轮询：GPU 显存 + 任务队列状态 ----
-        def _poll_all():
-            """单一回调同时更新标题栏 GPU 信息与任务队列状态。"""
-            # GPU 信息
+        # ---- 标题显存信息轮询 ----
+        def _get_gpu_vram_info() -> str:
+            """通过 nvidia-smi 获取显存使用情况（MB）。"""
             try:
                 result = subprocess.run(
                     ["nvidia-smi", "--query-gpu=index,name,memory.used,memory.total",
@@ -140,23 +138,24 @@ def build_app() -> gr.Blocks:
                     capture_output=True, text=True, timeout=5,
                 )
                 if result.returncode != 0:
-                    gpu_text = ""
-                else:
-                    parts_list = []
-                    for row in result.stdout.strip().splitlines():
-                        parts = [p.strip() for p in row.split(",")]
-                        if len(parts) == 4:
-                            idx, name, used, total = parts
-                            parts_list.append(f"GPU{idx} ({name}): {used} MB / {total} MB")
-                    gpu_text = "　|　".join(parts_list) if parts_list else ""
+                    return ""
+                parts_list = []
+                for row in result.stdout.strip().splitlines():
+                    parts = [p.strip() for p in row.split(",")]
+                    if len(parts) == 4:
+                        idx, name, used, total = parts
+                        parts_list.append(f"GPU{idx} ({name}): {used} MB / {total} MB")
+                gpu_text = "　|　".join(parts_list) if parts_list else ""
             except Exception:
                 gpu_text = ""
             if gpu_text:
-                title = f"# AudioGen — 游戏语音合成工具　　<sub>{gpu_text}</sub>\n"
-            else:
-                title = "# AudioGen — 游戏语音合成工具\n"
+                return f"# AudioGen — 游戏语音合成工具　　<sub>{gpu_text}</sub>\n"
+            return "# AudioGen — 游戏语音合成工具\n"
 
-            # 任务队列状态
+        gpu_timer.tick(fn=_get_gpu_vram_info, outputs=[title_md])
+
+        # ---- 任务队列状态轮询 ----
+        def refresh_queue_status():
             status = task_queue.get_status()
             lines = []
             current = status["current"]
@@ -173,11 +172,9 @@ def build_app() -> gr.Blocks:
                     wait_time = time.time() - entry.submitted_at
                     lines.append(f"{i}. {entry.description} "
                                  f"(用户: {entry.username}, 等待 {wait_time:.0f}s)")
-            queue_md = "\n".join(lines)
+            return "\n".join(lines)
 
-            return title, queue_md
-
-        poll_timer.tick(fn=_poll_all, outputs=[title_md, queue_status_md])
+        queue_timer.tick(fn=refresh_queue_status, outputs=[queue_status_md])
 
     return demo
 
