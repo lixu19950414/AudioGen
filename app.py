@@ -187,7 +187,7 @@ def build_app() -> gr.Blocks:
             _last_queue[0] = queue_md
             return title_out, queue_out
 
-        poll_timer.tick(fn=_poll_all, outputs=[title_md, queue_status_md])
+        poll_timer.tick(fn=_poll_all, outputs=[title_md, queue_status_md], show_progress="hidden")
 
     return demo
 

@@ -72,7 +72,7 @@ def tab_batch_music():
         with gr.Row():
             with gr.Column():
                 template_btn = gr.Button("下载 Excel 模板")
-                template_file = gr.File(label="模板文件", interactive=False, visible=False)
+                template_file = gr.File(label="模板文件", interactive=False)
                 file_upload = gr.File(
                     label="上传 CSV / Excel 文件",
                     file_types=[".csv", ".xlsx", ".xls"],
@@ -117,23 +117,22 @@ def tab_batch_music():
         batch_download = gr.File(label="下载压缩包", interactive=False)
 
         def download_template():
-            path = _generate_music_template()
-            return gr.update(value=path, visible=True)
+            return _generate_music_template()
 
         def run_batch_music(file, duration, steps, guidance, vocal_lang, instrumental, dit_model, lm_model, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
             if file is None:
-                return "请先上传文件", gr.update(value=None)
+                return "请先上传文件", None
             try:
                 df = load_table(file.name)
             except Exception as e:
-                return f"文件读取失败：{e}", gr.update(value=None)
+                return f"文件读取失败：{e}", None
 
             # 检查必要列
             has_caption = "caption" in df.columns
             has_lyrics = "lyrics" in df.columns
             if not has_caption and not has_lyrics:
-                return "文件缺少必要列：至少需要 caption 或 lyrics 列", gr.update(value=None)
+                return "文件缺少必要列：至少需要 caption 或 lyrics 列", None
 
             # 预检查
             errors: list[str] = []
@@ -151,7 +150,7 @@ def tab_batch_music():
             if errors:
                 return (
                     "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors),
-                    gr.update(value=None),
+                    None,
                 )
 
             # 创建输出目录
@@ -197,14 +196,13 @@ def tab_batch_music():
                         if f.is_file():
                             zf.write(f, f.name)
                 log_lines.append(f"\n压缩包已生成：{zip_path.name}")
-                return "\n".join(log_lines), gr.update(value=str(zip_path))
+                return "\n".join(log_lines), str(zip_path)
 
-            return "\n".join(log_lines), gr.update(value=None)
+            return "\n".join(log_lines), None
 
         template_btn.click(fn=download_template, inputs=[], outputs=[template_file])
         batch_btn.click(
             fn=run_batch_music,
             inputs=[file_upload, default_duration, steps_slider, guidance_slider, vocal_lang_dd, instrumental_cb, dit_model_dd, lm_model_dd],
             outputs=[batch_log, batch_download],
-            concurrency_limit=10,
         )
