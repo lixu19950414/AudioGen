@@ -66,7 +66,7 @@ def tab_batch():
         with gr.Row():
             with gr.Column():
                 template_btn = gr.Button("下载 Excel 模板")
-                template_file = gr.File(label="模板文件", interactive=False)
+                template_file = gr.File(label="模板文件", interactive=False, visible=False)
                 file_upload = gr.File(
                     label="上传 CSV / Excel 文件",
                     file_types=[".csv", ".xlsx", ".xls"],
@@ -79,23 +79,24 @@ def tab_batch():
         batch_download = gr.File(label="下载压缩包", interactive=False)
 
         def download_template():
-            return _generate_template()
+            path = _generate_template()
+            return gr.update(value=path, visible=True)
 
         def run_batch(file, fmt, request: gr.Request):
             user = (request.username or "unknown") if request else "-"
             if file is None:
-                return "请先上传文件", None
+                return "请先上传文件", gr.update(value=None)
             try:
                 df = load_table(file.name)
             except Exception as e:
-                return f"文件读取失败：{e}", None
+                return f"文件读取失败：{e}", gr.update(value=None)
 
             # 检查必要列
             missing = [c for c in ["character", "text"] if c not in df.columns]
             if missing:
                 return (
                     f"文件缺少必要列：{', '.join(missing)}。需要的列：character, text, filename（可选）",
-                    None,
+                    gr.update(value=None),
                 )
 
             chars = load_characters()
@@ -131,7 +132,7 @@ def tab_batch():
                 all_chars = sorted(set(list(chars.keys()) + list(design_chars.keys()) + PRESET_VOICES))
                 return (
                     "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors) + "\n\n可用角色：" + "、".join(all_chars),
-                    None,
+                    gr.update(value=None),
                 )
 
             # ---- 预检查通过，创建时间戳+文件名子目录，开始合成 ----
@@ -174,13 +175,14 @@ def tab_batch():
                         if f.is_file():
                             zf.write(f, f.name)
                 log_lines.append(f"\n压缩包已生成：{zip_path.name}")
-                return "\n".join(log_lines), str(zip_path)
+                return "\n".join(log_lines), gr.update(value=str(zip_path))
 
-            return "\n".join(log_lines), None
+            return "\n".join(log_lines), gr.update(value=None)
 
         template_btn.click(fn=download_template, inputs=[], outputs=[template_file])
         batch_btn.click(
             fn=run_batch,
             inputs=[file_upload, batch_fmt],
             outputs=[batch_log, batch_download],
+            concurrency_limit=10,
         )
