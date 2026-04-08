@@ -130,13 +130,8 @@ def build_app() -> gr.Blocks:
         )
 
         # ---- 合并轮询：GPU 显存 + 任务队列状态 ----
-        _last_title = [""]
-        _last_queue = [""]
-
         def _poll_all():
-            """单一回调同时更新标题栏 GPU 信息与任务队列状态。
-            值未变化时返回 gr.skip() 避免触发前端 Svelte effect。
-            """
+            """单一回调同时更新标题栏 GPU 信息与任务队列状态。"""
             # GPU 信息
             try:
                 result = subprocess.run(
@@ -180,12 +175,7 @@ def build_app() -> gr.Blocks:
                                  f"(用户: {entry.username}, 等待 {wait_time:.0f}s)")
             queue_md = "\n".join(lines)
 
-            # 值未变化则跳过前端更新，避免与 Tab 切换的 effect 冲突
-            title_out = gr.skip() if title == _last_title[0] else title
-            queue_out = gr.skip() if queue_md == _last_queue[0] else queue_md
-            _last_title[0] = title
-            _last_queue[0] = queue_md
-            return title_out, queue_out
+            return title, queue_md
 
         poll_timer.tick(fn=_poll_all, outputs=[title_md, queue_status_md])
 
