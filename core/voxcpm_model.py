@@ -21,32 +21,6 @@ logger = logging.getLogger(__name__)
 
 VOXCPM2_MODEL_ID = "openbmb/VoxCPM2"
 
-# 预设音色名称 → 音色描述映射（用于向后兼容原有角色配置）
-PRESET_VOICES: list[str] = [
-    "Vivian",
-    "Serena",
-    "Uncle_Fu",
-    "Dylan",
-    "Eric",
-    "Ryan",
-    "Aiden",
-    "Ono_Anna",
-    "Sohee",
-]
-
-# 音色描述文本
-VOICE_DESCRIPTIONS: dict[str, str] = {
-    "Vivian": "A young woman, clear and bright voice",
-    "Serena": "A young woman, gentle and sweet voice",
-    "Uncle_Fu": "A middle-aged man, warm and deep voice",
-    "Dylan": "A young man, clear and energetic voice",
-    "Eric": "A young man, calm and steady voice",
-    "Ryan": "A young man, cheerful and confident voice",
-    "Aiden": "A young man, gentle and polite voice",
-    "Ono_Anna": "A young woman, soft and elegant voice",
-    "Sohee": "A young woman, lively and cute voice",
-}
-
 
 class VoxCPMModel:
     """VoxCPM2 统一 TTS 模型（延迟加载）。"""
@@ -69,7 +43,7 @@ class VoxCPMModel:
         if self._model is not None:
             return
         if self._model_manager is not None:
-            self._model_manager.request_load("tts_preset")
+            self._model_manager.request_load("tts_clone")
         try:
             from voxcpm import VoxCPM  # type: ignore
         except ImportError as e:
@@ -99,50 +73,6 @@ class VoxCPMModel:
                 torch.cuda.empty_cache()
             logger.info("VoxCPM2 模型已卸载")
             log_event(EVENT_MODEL_UNLOAD, "VoxCPM2 模型已卸载", user="system")
-
-    def get_preset_voices(self) -> list[str]:
-        """返回预设音色名称列表。"""
-        return list(PRESET_VOICES)
-
-    # ------------------------------------------------------------------
-    # 基础合成（指定音色名称或使用音色描述）
-    # ------------------------------------------------------------------
-
-    def synthesize(
-        self,
-        text: str,
-        voice_name: Optional[str] = None,
-        voice_description: Optional[str] = None,
-    ) -> tuple[np.ndarray, int]:
-        """预设人声合成。
-        如果提供了 voice_name 且在 PRESET_VOICES 中，使用对应的音色描述；
-        否则使用 voice_description 或直接基础合成。
-        """
-        self.load()
-
-        # 确定音色描述
-        desc = None
-        if voice_name and voice_name in VOICE_DESCRIPTIONS:
-            desc = VOICE_DESCRIPTIONS[voice_name]
-        elif voice_description:
-            desc = voice_description
-
-        if desc:
-            # 带音色描述的合成
-            wav = self._model.generate(
-                text=f"({desc}){text}",
-                cfg_value=2.0,
-                inference_timesteps=10,
-            )
-        else:
-            # 基础合成（无特定音色）
-            wav = self._model.generate(
-                text=text,
-                cfg_value=2.0,
-                inference_timesteps=10,
-            )
-
-        return np.array(wav, dtype=np.float32), int(self._sample_rate)
 
     # ------------------------------------------------------------------
     # 参考音频克隆

@@ -14,7 +14,7 @@ from typing import Any, Callable, Optional
 class TaskEntry:
     task_id: str
     username: str
-    task_type: str          # "preset" | "clone" | "design" | "batch"
+    task_type: str          # "clone" | "design" | "batch"
     description: str
     callable: Callable
     submitted_at: float = field(default_factory=time.time)

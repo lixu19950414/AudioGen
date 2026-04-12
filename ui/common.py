@@ -17,7 +17,6 @@ from core.batch_processor import BatchProcessor
 from core.clone_model import CloneModel
 from core.design_model import DesignModel
 from core.model_manager import ModelManager
-from core.preset_model import PresetModel, PRESET_VOICES
 from core.sfx_model import SfxModel
 from core.music_model import MusicModel
 from core.task_queue import TaskQueue
@@ -44,7 +43,6 @@ for _d in (DATA_DIR, REF_AUDIO_DIR, OUTPUT_DIR, BATCH_OUTPUT_DIR):
 # ---------------------------------------------------------------------------
 # 全局模型实例（单例）
 # ---------------------------------------------------------------------------
-preset_model = PresetModel()
 clone_model = CloneModel()
 design_model = DesignModel()
 sfx_model = SfxModel()
@@ -57,22 +55,20 @@ task_queue = TaskQueue()
 # ModelManager：统一管理所有模型的加载/卸载
 # ---------------------------------------------------------------------------
 model_manager = ModelManager()
-model_manager.register("tts_preset", preset_model)
 model_manager.register("tts_clone", clone_model)
 model_manager.register("tts_design", design_model)
 model_manager.register("sfx", sfx_model)
 model_manager.register("music", music_model)
 model_manager.register("asr", asr_model)
 
-preset_model.set_model_manager(model_manager)
 clone_model.set_model_manager(model_manager)
 design_model.set_model_manager(model_manager)
 sfx_model.set_model_manager(model_manager)
 music_model.set_model_manager(model_manager)
 asr_model.set_model_manager(model_manager)
 
-# BatchProcessor 需要 preset_model / clone_model / design_model / sfx_model / music_model
-batch_processor = BatchProcessor(preset_model, clone_model, design_model, sfx_model, music_model)
+# BatchProcessor 需要 clone_model / design_model / sfx_model / music_model
+batch_processor = BatchProcessor(clone_model, design_model, sfx_model, music_model)
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +138,6 @@ def to_gradio_audio(audio_bytes: bytes, fmt: str, name_hint: str = "") -> str:
 def synth_to_file(
     text: str,
     fmt: str,
-    voice_name: Optional[str] = None,
     ref_audio=None,
     ref_text: Optional[str] = None,
     name_hint: str = "",
@@ -155,18 +150,11 @@ def synth_to_file(
         if not text or not text.strip():
             raise ValueError("合成文本不能为空")
 
-        if ref_audio is not None:
-            task_type = "clone"
-            task_desc = f"克隆人声: {text[:30]}"
+        task_type = "clone"
+        task_desc = f"克隆人声: {text[:30]}"
 
-            def do_synth():
-                return clone_model.synthesize(text, ref_audio, ref_text)
-        else:
-            task_type = "preset"
-            task_desc = f"预设合成: {text[:30]}"
-
-            def do_synth():
-                return preset_model.synthesize(text, voice_name)
+        def do_synth():
+            return clone_model.synthesize(text, ref_audio, ref_text)
 
         audio, sr = task_queue.submit(user, task_type, task_desc, do_synth)
         audio = normalize_audio(audio)
@@ -175,10 +163,7 @@ def synth_to_file(
         duration = len(audio) / sr
         rel_path = Path(path).relative_to(BASE_DIR).as_posix()
         char_info = f" 角色={char_name}" if char_name else ""
-        if ref_audio is not None:
-            log_event(EVENT_SYNTHESIZE, f"类型=克隆人声{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
-        else:
-            log_event(EVENT_SYNTHESIZE, f"类型=预设合成{char_info} 文本={text[:50]} 音色={voice_name or '默认'} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
+        log_event(EVENT_SYNTHESIZE, f"类型=克隆人声{char_info} 文本={text[:50]} 参考文字={ref_text or ''} 格式={fmt} 时长={duration:.1f}s 文件={rel_path}", user=user)
         return path, f"合成成功（{len(audio)/sr:.1f} 秒）\n已保存：{rel_path}"
     except Exception as e:
         logger.exception("合成失败")

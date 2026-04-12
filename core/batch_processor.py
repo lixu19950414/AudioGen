@@ -16,7 +16,6 @@ import numpy as np
 import pandas as pd
 
 from core.audio_utils import AudioFormat, normalize_audio, save_audio
-from core.preset_model import PresetModel, PRESET_VOICES
 from core.clone_model import CloneModel
 from core.design_model import DesignModel
 
@@ -65,13 +64,11 @@ class BatchProcessor:
 
     def __init__(
         self,
-        preset_model: PresetModel,
         clone_model: CloneModel,
         design_model: DesignModel,
         sfx_model: Optional[SfxModel] = None,
         music_model: Optional[MusicModel] = None,
     ):
-        self.preset_model = preset_model
         self.clone_model = clone_model
         self.design_model = design_model
         self.sfx_model = sfx_model
@@ -121,10 +118,8 @@ class BatchProcessor:
             stem = fname if fname else f"{row_num:04d}"
             out_path = output_dir / f"{stem}.{output_format}"
 
-            # 查找角色配置：克隆角色 → 设计角色 → 预设人声
+            # 查找角色配置：克隆角色 → 设计角色
             cfg = characters.get(char_name) or design_characters.get(char_name)
-            if not cfg and char_name in PRESET_VOICES:
-                cfg = {"voice_type": "preset", "voice_name": char_name}
             if not cfg:
                 msg = f"第 {row_num} 行：角色「{char_name}」不存在，跳过"
                 logger.warning(msg)
@@ -153,10 +148,6 @@ class BatchProcessor:
                             ref_audio = str(abs_rp)
                             ref_text = cfg.get("ref_text")
                     audio, sr = self.clone_model.synthesize(text=text, ref_audio=ref_audio, ref_text=ref_text)
-                else:
-                    # preset
-                    voice_name = cfg.get("voice_name")
-                    audio, sr = self.preset_model.synthesize(text=text, voice_name=voice_name)
 
                 audio = normalize_audio(audio)
                 saved = save_audio(audio, sr, out_path, output_format)

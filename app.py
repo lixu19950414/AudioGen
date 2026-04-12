@@ -1,18 +1,17 @@
 """
 app.py — DPAudio 游戏语音合成工具
 Gradio 前端，共 11 个 Tab：
-  1. 预设人声
-  2. 自定义人声（自然语言描述音色）
-  3. 克隆人声
-  4. 角色管理
-  5. 批量处理人声
-  6. 工具
-  7. 音频浏览
-  8. 批量下载
-  9. 音效合成
-  10. 批量处理音效
-  11. 音乐合成
-  12. 批量处理音乐
+  1. 自定义人声（自然语言描述音色）
+  2. 克隆人声
+  3. 角色管理
+  4. 批量处理人声
+  5. 工具
+  6. 音频浏览
+  7. 批量下载
+  8. 音效合成
+  9. 批量处理音效
+  10. 音乐合成
+  11. 批量处理音乐
 """
 
 from __future__ import annotations
@@ -34,7 +33,6 @@ from ui.common import (
     model_manager,
     task_queue,
 )
-from ui.tab_single_synth import tab_single_synth
 from ui.tab_voice_design import tab_voice_design
 from ui.tab_clone import tab_clone
 from ui.tab_character_manager import tab_character_manager
@@ -67,7 +65,6 @@ def build_app() -> gr.Blocks:
 
         with gr.Tabs():
             # ---- 语音合成 ----
-            synth_audio_out, synth_send_btn = tab_single_synth()
             design_char_dd, design_save_btn, design_audio_out, design_send_btn = tab_voice_design()
             clone_char_dd, clone_save_btn, ref_audio_in = tab_clone()
             char_table, design_table, delete_clone_btn, delete_design_btn = tab_character_manager()
@@ -104,7 +101,6 @@ def build_app() -> gr.Blocks:
         )
 
         # 发送到克隆人声
-        synth_send_btn.click(fn=lambda a: a, inputs=[synth_audio_out], outputs=[ref_audio_in])
         design_send_btn.click(fn=lambda a: a, inputs=[design_audio_out], outputs=[ref_audio_in])
         tool_send_btn.click(fn=lambda a: a, inputs=[tool_audio_out], outputs=[ref_audio_in])
         sep_send_btn.click(fn=lambda a: a, inputs=[sep_vocals_out], outputs=[ref_audio_in])

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AudioGen 是一个游戏语音合成工具，基于 **VoxCPM2** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设人声、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理、视频音频提取、音效合成和音乐合成。
+AudioGen 是一个游戏语音合成工具，基于 **VoxCPM2** 本地大模型，使用 **Gradio** 提供 Web 界面。支持音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理、视频音频提取、音效合成和音乐合成。
 
 ## 启动
 
@@ -25,15 +25,14 @@ Gradio UI (app.py)
     └── ui/tab_*.py                          ← 每个 Tab 一个文件
     └── TaskQueue (core/task_queue.py)       ← 单 worker 线程，保证同一时间只执行一个推理任务
     └── ModelManager (core/model_manager.py) ← 统一管理所有模型的加载/卸载生命周期
-    └── PresetModel (core/preset_model.py)   ← VoxCPM2 预设人声（包装器）
     └── CloneModel (core/clone_model.py)     ← VoxCPM2 参考音频克隆（包装器）
     └── DesignModel (core/design_model.py)   ← VoxCPM2 音色设计合成（包装器）
-    └── VoxCPMModel (core/voxcpm_model.py)   ← VoxCPM2 核心模型，三种模式统一入口
+    └── VoxCPMModel (core/voxcpm_model.py)   ← VoxCPM2 核心模型，两种模式统一入口
     └── SfxModel (core/sfx_model.py)         ← Stable Audio 音效合成
     └── MusicModel (core/music_model.py)     ← ACE-Step 音乐合成
     └── AsrModel (core/asr_model.py)         ← Whisper 语音识别
     └── BatchProcessor (core/batch_processor.py)
-            └── 直接调用 PresetModel/CloneModel/DesignModel，逐行合成
+            └── 直接调用 CloneModel/DesignModel，逐行合成
     └── audio_utils (core/audio_utils.py)
             └── numpy array → WAV/MP3 bytes
     └── app_logger (core/app_logger.py)      ← 业务事件日志，按天轮转写入 logs/
@@ -46,7 +45,6 @@ Gradio UI (app.py)
 
 所有模型在 `ui/common.py` 中注册到 ModelManager：
 
-- `tts_preset` → PresetModel（VoxCPM2 包装器）
 - `tts_clone` → CloneModel（VoxCPM2 包装器）
 - `tts_design` → DesignModel（VoxCPM2 包装器）
 - `sfx` → SfxModel（Stable Audio）
@@ -55,12 +53,11 @@ Gradio UI (app.py)
 
 ### 模型
 
-TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `generate()` 参数实现三种模式。三个包装器文件（`preset_model.py` / `clone_model.py` / `design_model.py`）保持向后兼容 API：
+TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `generate()` 参数实现两种模式。两个包装器文件（`clone_model.py` / `design_model.py`）保持向后兼容 API：
 
 | 模型文件                 | 底层模型              | 用途         |
 | ------------------------ | --------------------- | ------------ |
 | `core/voxcpm_model.py` | `openbmb/VoxCPM2`     | TTS 核心模型 |
-| `core/preset_model.py` | VoxCPM2（包装器）     | 预设人声     |
 | `core/clone_model.py`  | VoxCPM2（包装器）     | 参考音频克隆 |
 | `core/design_model.py` | VoxCPM2（包装器）     | 音色设计合成 |
 | `core/sfx_model.py`    | `stabilityai/stable-audio-open-1.0` | 音效合成 |
@@ -69,9 +66,8 @@ TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `genera
 
 - `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH，将 `ACE-Step-1.5/` 加入 `sys.path`。必须在其他模块之前导入。
 - VoxCPM2 输出 48kHz 音频，`generate()` 返回 `np.ndarray`。
-- **预设人声**：通过音色描述前缀 `({description}){text}` 实现，`PRESET_VOICES` 定义了名称到描述的映射。
 - **参考音频克隆**：通过 `reference_wav_path` 参数实现，有参考文字时使用 Ultimate Cloning 模式。
-- **音色设计**：通过 `(instruct)text` 格式实现。
+- **音色设计**：通过 `(instruct)text` 格式实现，文本中带括号时推荐 `cfg_value=2.0`。
 
 ### 语音识别（core/asr_model.py）
 
@@ -83,20 +79,19 @@ TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `genera
 
 | 场景         | 调用模型                                              |
 | ------------ | ----------------------------------------------------- |
-| 预设人声     | `preset_model.synthesize(text, voice_name)`         |
 | 参考音频克隆 | `clone_model.synthesize(text, ref_audio, ref_text)` |
 | 音色设计合成 | `design_model.synthesize(text, instruct)`           |
 | 音效合成     | `sfx_model.generate(prompt, ...)`                   |
 | 音乐合成     | `music_model.generate(caption, lyrics, ...)`        |
 | 语音识别     | `asr_model.recognize(audio_path)`                   |
 
-`synth_to_file()` 在 `ui/common.py` 中内联路由逻辑：有 `ref_audio` → CloneModel，否则 → PresetModel。
+`synth_to_file()` 在 `ui/common.py` 中调用 CloneModel 进行合成。
 
 加载前各模型通过 `ModelManager.request_load()` 自动卸载其他模型释放 VRAM。
 
 ### 任务队列（core/task_queue.py）
 
-`TaskQueue` 使用单 worker 线程，保证同一时间只有一个模型推理任务在执行。各 Tab 提交合成任务时通过 `task_queue.submit()` 入队，任务类型包括 `"preset"` / `"clone"` / `"design"` / `"sfx"` / `"music"` / `"batch"`。任务状态：`queued` → `running` → `done` / `error`。
+`TaskQueue` 使用单 worker 线程，保证同一时间只有一个模型推理任务在执行。各 Tab 提交合成任务时通过 `task_queue.submit()` 入队，任务类型包括 `"clone"` / `"design"` / `"sfx"` / `"music"` / `"batch"`。任务状态：`queued` → `running` → `done` / `error`。
 
 ### Gradio UI（app.py）
 
@@ -104,7 +99,6 @@ TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `genera
 
 | 函数                        | Tab                  | 返回值                                                                            |
 | --------------------------- | -------------------- | --------------------------------------------------------------------------------- |
-| `tab_single_synth()`      | 预设人声             | `(audio_out, send_to_clone_btn)`                                                |
 | `tab_voice_design()`      | 自定义人声           | `(design_char_dd, design_save_btn, design_audio_out, design_send_to_clone_btn)` |
 | `tab_clone()`             | 克隆人声             | `(clone_char_dd, save_to_char_btn, ref_audio_in)`                               |
 | `tab_character_manager()` | 角色管理             | `(char_table, design_table, delete_clone_btn, delete_design_btn)`               |
@@ -123,7 +117,7 @@ TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `genera
 
 ### 跨 Tab 交互
 
-- **发送到克隆人声**：预设人声、自定义人声、工具提取音频、音频浏览下方各有按钮，点击后将音频传到克隆人声 Tab 的 `ref_audio_in`
+- **发送到克隆人声**：自定义人声、工具提取音频、音频浏览下方各有按钮，点击后将音频传到克隆人声 Tab 的 `ref_audio_in`
 - **保存角色 → 刷新管理表格**：克隆人声/自定义人声 Tab 保存后自动刷新角色管理表格
 - **删除角色 → 刷新下拉**：角色管理删除后自动刷新合成 Tab 下拉列表
 - 所有音频输出组件设为 `interactive=False`，仅播放不可上传
@@ -160,14 +154,13 @@ TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `genera
 
 ## 关键常量（core/voxcpm_model.py）
 
-- `PRESET_VOICES`：静态预设音色名称列表（`["Vivian", "Serena", "Uncle_Fu", ...]`）
-- `VOICE_DESCRIPTIONS`：音色名称 → 英文描述映射，预设人声合成时通过 `({description}){text}` 格式传递给 VoxCPM2
 - `VOXCPM2_MODEL_ID`：`openbmb/VoxCPM2`
 - VoxCPM2 输出采样率 48kHz
+- 所有 `generate()` 调用统一使用 `cfg_value=2.0, inference_timesteps=10`
 
 ## 批量处理 CSV 格式
 
-默认列名：`text`（必填）、`character`（可选）、`filename`（可选）。列名可在 UI 中自定义。`character` 列的值需与 `characters.json` 中的角色名完全匹配。输出文件名：有 `filename` 列时用其值，否则按行号 `0001.wav` 命名。
+默认列名：`text`（必填）、`character`（必填）、`filename`（可选）。列名可在 UI 中自定义。`character` 列的值需与 `characters.json` 或 `design_characters.json` 中的角色名完全匹配。输出文件名：有 `filename` 列时用其值，否则按行号 `0001.wav` 命名。
 
 ## 输出目录
 

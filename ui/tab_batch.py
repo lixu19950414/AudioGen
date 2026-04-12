@@ -13,7 +13,6 @@ from openpyxl.comments import Comment
 
 from core.audio_utils import AudioFormat
 from core.batch_processor import load_table
-from core.preset_model import PRESET_VOICES
 from core.app_logger import log_event, EVENT_BATCH
 from ui.common import (
     BATCH_OUTPUT_DIR,
@@ -26,13 +25,13 @@ from ui.common import (
 _TEMPLATE_COLUMNS = ["character", "text", "filename"]
 
 _TEMPLATE_COMMENTS = {
-    "character": "角色名（必填）\n需与已保存的角色名完全匹配，\n支持克隆角色、设计角色和预设人声。",
+    "character": "角色名（必填）\n需与已保存的角色名完全匹配，\n支持克隆角色和设计角色。",
     "text": "台词文本（必填）\n要合成的语音文字内容。",
     "filename": "输出文件名（可选）\n不填则按行号自动命名，如 0001.wav。\n无需填写扩展名。",
 }
 
 _TEMPLATE_EXAMPLE = {
-    "character": "Vivian",
+    "character": "",
     "text": "你好，欢迎来到游戏世界！",
     "filename": "welcome",
 }
@@ -117,7 +116,7 @@ def tab_batch():
                     empty_text_rows.append(row_num)
                 if not char_name:
                     empty_char_rows.append(row_num)
-                elif char_name not in chars and char_name not in design_chars and char_name not in PRESET_VOICES:
+                elif char_name not in chars and char_name not in design_chars:
                     invalid_chars.setdefault(char_name, []).append(row_num)
 
             if empty_text_rows:
@@ -129,7 +128,7 @@ def tab_batch():
                     errors.append(f"角色「{name}」不存在（第 {', '.join(map(str, rows))} 行）")
 
             if errors:
-                all_chars = sorted(set(list(chars.keys()) + list(design_chars.keys()) + PRESET_VOICES))
+                all_chars = sorted(set(list(chars.keys()) + list(design_chars.keys())))
                 return (
                     "文件预检查未通过，请修正后重试：\n\n" + "\n".join(errors) + "\n\n可用角色：" + "、".join(all_chars),
                     gr.update(value=None),
