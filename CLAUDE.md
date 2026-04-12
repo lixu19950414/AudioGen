@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-AudioGen 是一个游戏语音合成工具，基于 **Qwen3-TTS** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设人声、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理、视频音频提取、音效合成和音乐合成。
+AudioGen 是一个游戏语音合成工具，基于 **VoxCPM2** 本地大模型，使用 **Gradio** 提供 Web 界面。支持预设人声、音色设计、参考音频克隆、角色音色管理、CSV/Excel 批量处理、视频音频提取、音效合成和音乐合成。
 
 ## 启动
 
@@ -25,9 +25,10 @@ Gradio UI (app.py)
     └── ui/tab_*.py                          ← 每个 Tab 一个文件
     └── TaskQueue (core/task_queue.py)       ← 单 worker 线程，保证同一时间只执行一个推理任务
     └── ModelManager (core/model_manager.py) ← 统一管理所有模型的加载/卸载生命周期
-    └── PresetModel (core/preset_model.py)   ← CustomVoice 预设人声
-    └── CloneModel (core/clone_model.py)     ← Base 参考音频克隆
-    └── DesignModel (core/design_model.py)   ← VoiceDesign 音色设计合成
+    └── PresetModel (core/preset_model.py)   ← VoxCPM2 预设人声（包装器）
+    └── CloneModel (core/clone_model.py)     ← VoxCPM2 参考音频克隆（包装器）
+    └── DesignModel (core/design_model.py)   ← VoxCPM2 音色设计合成（包装器）
+    └── VoxCPMModel (core/voxcpm_model.py)   ← VoxCPM2 核心模型，三种模式统一入口
     └── SfxModel (core/sfx_model.py)         ← Stable Audio 音效合成
     └── MusicModel (core/music_model.py)     ← ACE-Step 音乐合成
     └── AsrModel (core/asr_model.py)         ← Whisper 语音识别
@@ -45,29 +46,32 @@ Gradio UI (app.py)
 
 所有模型在 `ui/common.py` 中注册到 ModelManager：
 
-- `tts_preset` → PresetModel（CustomVoice）
-- `tts_clone` → CloneModel（Base）
-- `tts_design` → DesignModel（VoiceDesign）
+- `tts_preset` → PresetModel（VoxCPM2 包装器）
+- `tts_clone` → CloneModel（VoxCPM2 包装器）
+- `tts_design` → DesignModel（VoxCPM2 包装器）
 - `sfx` → SfxModel（Stable Audio）
 - `music` → MusicModel（ACE-Step）
 - `asr` → AsrModel（Whisper）
 
 ### 模型
 
-TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
+TTS 使用 **VoxCPM2**（`openbmb/VoxCPM2`）统一模型，通过不同 `generate()` 参数实现三种模式。三个包装器文件（`preset_model.py` / `clone_model.py` / `design_model.py`）保持向后兼容 API：
 
-| 模型文件                 | 模型 ID                                  | 用途         |
-| ------------------------ | ---------------------------------------- | ------------ |
-| `core/preset_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设人声     |
-| `core/clone_model.py`  | `Qwen/Qwen3-TTS-12Hz-1.7B-Base`        | 参考音频克隆 |
-| `core/design_model.py` | `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` | 音色设计合成 |
-| `core/sfx_model.py`    | `stabilityai/stable-audio-open-1.0`    | 音效合成     |
-| `core/music_model.py`  | `ACE-Step/Ace-Step1.5`                 | 音乐合成     |
-| `core/asr_model.py`    | `openai/whisper-large-v3`              | 语音识别     |
+| 模型文件                 | 底层模型              | 用途         |
+| ------------------------ | --------------------- | ------------ |
+| `core/voxcpm_model.py` | `openbmb/VoxCPM2`     | TTS 核心模型 |
+| `core/preset_model.py` | VoxCPM2（包装器）     | 预设人声     |
+| `core/clone_model.py`  | VoxCPM2（包装器）     | 参考音频克隆 |
+| `core/design_model.py` | VoxCPM2（包装器）     | 音色设计合成 |
+| `core/sfx_model.py`    | `stabilityai/stable-audio-open-1.0` | 音效合成 |
+| `core/music_model.py`  | `ACE-Step/Ace-Step1.5` | 音乐合成     |
+| `core/asr_model.py`    | `openai/whisper-large-v3` | 语音识别   |
 
 - `config.py` 设置 `HF_HUB_CACHE`（指向 `models/`）、`HF_ENDPOINT`（默认 `https://hf-mirror.com`）、`HF_HUB_DISABLE_XET`、`AUTH_USERS`（Gradio 登录账号），并将项目内 `ffmpeg/` 目录加入 PATH，将 `ACE-Step-1.5/` 加入 `sys.path`。必须在其他模块之前导入。
-- 模型以 `torch.bfloat16` 加载，自动检测 cuda / cpu。
-- `qwen_tts.Qwen3TTSModel` 的方法返回 `(List[np.ndarray], int)`，取 `[0]` 得到单条音频。
+- VoxCPM2 输出 48kHz 音频，`generate()` 返回 `np.ndarray`。
+- **预设人声**：通过音色描述前缀 `({description}){text}` 实现，`PRESET_VOICES` 定义了名称到描述的映射。
+- **参考音频克隆**：通过 `reference_wav_path` 参数实现，有参考文字时使用 Ultimate Cloning 模式。
+- **音色设计**：通过 `(instruct)text` 格式实现。
 
 ### 语音识别（core/asr_model.py）
 
@@ -154,10 +158,12 @@ TTS 使用 3 个 Qwen3-TTS 模型，每个模型独立一个文件：
 }
 ```
 
-## 关键常量（core/preset_model.py）
+## 关键常量（core/voxcpm_model.py）
 
-- `PRESET_VOICES`：静态预设说话人列表（`["Vivian", "Serena", "Uncle_Fu", ...]`），模型加载后尝试通过 `model.get_supported_speakers()` 动态更新。
-- `CUSTOM_VOICE_MODEL_ID`：`Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice`
+- `PRESET_VOICES`：静态预设音色名称列表（`["Vivian", "Serena", "Uncle_Fu", ...]`）
+- `VOICE_DESCRIPTIONS`：音色名称 → 英文描述映射，预设人声合成时通过 `({description}){text}` 格式传递给 VoxCPM2
+- `VOXCPM2_MODEL_ID`：`openbmb/VoxCPM2`
+- VoxCPM2 输出采样率 48kHz
 
 ## 批量处理 CSV 格式
 
