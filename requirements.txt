@@ -1,5 +1,5 @@
 voxcpm
-gradio>=4.0
+gradio==6.9.0
 transformers
 accelerate
 soundfile

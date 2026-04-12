@@ -1,10 +1,9 @@
 # AudioGen - 游戏语音合成工具
 
-基于 **Qwen3-TTS** 本地大模型的游戏语音合成工具，使用 Gradio 提供 Web 界面。
+基于 **VoxCPM2** 本地大模型的游戏语音合成工具，使用 Gradio 提供 Web 界面。
 
 ## 功能
 
-- **预设人声** — 内置多种说话人，开箱即用
 - **音色设计** — 通过文字描述生成自定义音色
 - **参考音频克隆** — 上传参考音频克隆说话人音色
 - **角色管理** — 保存、管理已创建的角色音色
@@ -16,22 +15,39 @@
 
 ## 环境要求
 
-- Python 3.10+
+- **Python 3.12**（必须）
 - CUDA 兼容 GPU（推荐，CPU 也可运行）
 - Windows / Linux
 
 ## 快速开始
 
+推荐使用 conda 管理环境，本项目必须使用 Python 3.12。
+
 ```bash
-# 安装依赖
+# 1. 创建 conda 环境（Python 3.12）
+conda create -n audiogen python=3.12 -y
+
+# 2. 激活环境
+conda activate audiogen
+
+# 3. 安装 CUDA 支持（根据你的 CUDA 版本选择）
+# CUDA 12.x（推荐）
+conda install -c "nvidia/label/cuda-12.8.0" cuda-toolkit
+
+# 4. 安装 PyTorch（与 CUDA 版本对应）
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+
+# 5. 安装项目依赖
 pip install -r requirements.txt
 
-# 安装 ACE-Step 音乐合成（可选，需要音乐合成功能时安装）
+# 6. 安装 ACE-Step 音乐合成（可选，需要音乐合成功能时安装）
 git clone https://github.com/ACE-Step/ACE-Step-1.5.git
 cd ACE-Step-1.5
 uv sync
 cd ..
+```
 
+```bash
 # 启动
 python app.py
 ```
@@ -44,9 +60,7 @@ python app.py
 
 | 模型 | 用途 |
 |------|------|
-| `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` | 预设人声 |
-| `Qwen/Qwen3-TTS-12Hz-1.7B-Base` | 参考音频克隆 |
-| `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` | 音色设计 |
+| `openbmb/VoxCPM2` | 音色设计 / 参考音频克隆 |
 | `stabilityai/stable-audio-open-1.0` | 音效合成 |
 | `ACE-Step/Ace-Step1.5` | 音乐合成 |
 | `openai/whisper-large-v3` | 语音识别 |
@@ -79,8 +93,8 @@ python app.py
 ├── app.py                  # Gradio 主入口
 ├── config.py               # 全局配置（环境变量、路径）
 ├── core/                   # 核心逻辑
+│   ├── voxcpm_model.py     # VoxCPM2 TTS 核心模型
 │   ├── model_manager.py    # 模型生命周期管理
-│   ├── preset_model.py     # 预设人声
 │   ├── clone_model.py      # 克隆人声
 │   ├── design_model.py     # 音色设计
 │   ├── sfx_model.py        # 音效合成
@@ -104,7 +118,7 @@ python app.py
 | 列名 | 必填 | 说明 |
 |------|------|------|
 | `text` | 是 | 待合成文本 |
-| `character` | 否 | 角色名（需与已保存角色匹配） |
+| `character` | 是 | 角色名（需与已保存的克隆角色或设计角色匹配） |
 | `filename` | 否 | 输出文件名（缺省按行号命名） |
 
 列名可在 UI 中自定义。
